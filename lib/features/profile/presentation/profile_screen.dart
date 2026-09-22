@@ -133,7 +133,6 @@ class ProfileScreen extends StatelessWidget {
       margin: const EdgeInsets.only(bottom: 10),
       child: Material(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(14),
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(14),
           side: const BorderSide(color: AppColors.cardBorder),

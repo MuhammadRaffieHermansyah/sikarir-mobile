@@ -247,7 +247,10 @@ class _HomePageState extends State<HomePage> {
                     children: [
                       Text(
                         'Jelajahi Pelatihan',
-                        style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
+                        style: TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.bold,
+                        ),
                       ),
                       SizedBox(width: 6),
                       Icon(Icons.arrow_forward_rounded, size: 14),
@@ -318,7 +321,11 @@ class _HomePageState extends State<HomePage> {
           children: [
             const Row(
               children: [
-                Icon(Icons.school_outlined, size: 18, color: AppColors.textPrimary),
+                Icon(
+                  Icons.school_outlined,
+                  size: 18,
+                  color: AppColors.textPrimary,
+                ),
                 SizedBox(width: 6),
                 Text(
                   'Pelatihan Saya',
@@ -362,7 +369,10 @@ class _HomePageState extends State<HomePage> {
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
                   Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 8,
+                      vertical: 4,
+                    ),
                     decoration: BoxDecoration(
                       color: AppColors.mint,
                       borderRadius: BorderRadius.circular(10),
@@ -403,10 +413,7 @@ class _HomePageState extends State<HomePage> {
               const SizedBox(height: 2),
               const Text(
                 'Kejuruan Bisnis & Manajemen Kreatif',
-                style: TextStyle(
-                  fontSize: 11,
-                  color: AppColors.textSecondary,
-                ),
+                style: TextStyle(fontSize: 11, color: AppColors.textSecondary),
               ),
               const SizedBox(height: 12),
               Row(
@@ -443,14 +450,21 @@ class _HomePageState extends State<HomePage> {
               Row(
                 children: [
                   Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 8,
+                      vertical: 4,
+                    ),
                     decoration: BoxDecoration(
                       color: AppColors.background,
                       borderRadius: BorderRadius.circular(8),
                     ),
                     child: const Row(
                       children: [
-                        Icon(Icons.access_time, size: 12, color: AppColors.textSecondary),
+                        Icon(
+                          Icons.access_time,
+                          size: 12,
+                          color: AppColors.textSecondary,
+                        ),
                         SizedBox(width: 4),
                         Text(
                           'Besok • 08:00 WIB',
@@ -468,11 +482,18 @@ class _HomePageState extends State<HomePage> {
               const SizedBox(height: 6),
               Row(
                 children: const [
-                  Icon(Icons.room_preferences_outlined, size: 13, color: AppColors.textSecondary),
+                  Icon(
+                    Icons.room_preferences_outlined,
+                    size: 13,
+                    color: AppColors.textSecondary,
+                  ),
                   SizedBox(width: 4),
                   Text(
                     'Lab Komputer 02 • BLK Jember',
-                    style: TextStyle(fontSize: 11, color: AppColors.textSecondary),
+                    style: TextStyle(
+                      fontSize: 11,
+                      color: AppColors.textSecondary,
+                    ),
                   ),
                 ],
               ),
@@ -483,7 +504,9 @@ class _HomePageState extends State<HomePage> {
                 child: ElevatedButton.icon(
                   onPressed: () {
                     ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('Membuka modul dan presensi...')),
+                      const SnackBar(
+                        content: Text('Membuka modul dan presensi...'),
+                      ),
                     );
                   },
                   icon: const Icon(Icons.sync_alt_rounded, size: 16),
@@ -517,7 +540,11 @@ class _HomePageState extends State<HomePage> {
           children: const [
             Row(
               children: [
-                Icon(Icons.calendar_today_outlined, size: 16, color: AppColors.textPrimary),
+                Icon(
+                  Icons.calendar_today_outlined,
+                  size: 16,
+                  color: AppColors.textPrimary,
+                ),
                 SizedBox(width: 6),
                 Text(
                   'Jadwal Berikutnya',
@@ -531,10 +558,7 @@ class _HomePageState extends State<HomePage> {
             ),
             Text(
               'Minggu ke-4',
-              style: TextStyle(
-                fontSize: 11,
-                color: AppColors.textSecondary,
-              ),
+              style: TextStyle(fontSize: 11, color: AppColors.textSecondary),
             ),
           ],
         ),
@@ -555,7 +579,9 @@ class _HomePageState extends State<HomePage> {
                 decoration: BoxDecoration(
                   color: AppColors.peachBg,
                   borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: AppColors.orange.withValues(alpha: 0.3)),
+                  border: Border.all(
+                    color: AppColors.orange.withValues(alpha: 0.3),
+                  ),
                 ),
                 child: Column(
                   mainAxisAlignment: MainAxisAlignment.center,
@@ -585,7 +611,10 @@ class _HomePageState extends State<HomePage> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 6,
+                        vertical: 2,
+                      ),
                       decoration: BoxDecoration(
                         color: AppColors.peachBg,
                         borderRadius: BorderRadius.circular(6),
@@ -593,7 +622,11 @@ class _HomePageState extends State<HomePage> {
                       child: const Row(
                         mainAxisSize: MainAxisSize.min,
                         children: [
-                          Icon(Icons.access_time, size: 10, color: AppColors.peachText),
+                          Icon(
+                            Icons.access_time,
+                            size: 10,
+                            color: AppColors.peachText,
+                          ),
                           SizedBox(width: 4),
                           Text(
                             '08:00 - 15:30 WIB',
@@ -653,11 +686,11 @@ class _HomePageState extends State<HomePage> {
       {
         'title': 'Fullstack Web Developer',
         'category': 'TEKNOLOGI INFORMASI',
-        'desc': 'Menguasai arsitektur RESTful API, React, dan integrasi database..',
+        'desc':
+            'Menguasai arsitektur RESTful API, React, dan integrasi database..',
         'jp': '280 JP',
         'quota': 'Sisa Kuota: 4',
-        'image':
-            'https://images.unsplash.com/photo-1522071820081-009f0129c71c?w=600&auto=format&fit=crop&q=80',
+        'image': 'https://images.unsplash.com/photo-1522071820081-009f0129c71c?w=600&auto=format&fit=crop&q=80',
       },
       {
         'title': 'Teknisi Kendaraan Listrik (EV)',
@@ -665,8 +698,7 @@ class _HomePageState extends State<HomePage> {
         'desc': 'Sertifikasi BNSP penanganan baterai tegangan tinggi dan kalibrasi..',
         'jp': '320 JP',
         'quota': 'Sisa Kuota: 3',
-        'image':
-            'https://images.unsplash.com/photo-1581092160607-ee22621dd758?w=600&auto=format&fit=crop&q=80',
+        'image': 'https://images.unsplash.com/photo-1581092160607-ee22621dd758?w=600&auto=format&fit=crop&q=80',
       },
     ];
 
@@ -678,7 +710,11 @@ class _HomePageState extends State<HomePage> {
           children: [
             const Row(
               children: [
-                Icon(Icons.star_border_rounded, size: 18, color: AppColors.textPrimary),
+                Icon(
+                  Icons.star_border_rounded,
+                  size: 18,
+                  color: AppColors.textPrimary,
+                ),
                 SizedBox(width: 6),
                 Text(
                   'Pelatihan yang Mungkin Kamu Suka',
@@ -709,161 +745,159 @@ class _HomePageState extends State<HomePage> {
         ),
         const SizedBox(height: 12),
         SizedBox(
-          height: 250,
+          height: 220,
           child: ListView.separated(
             scrollDirection: Axis.horizontal,
             itemCount: recommendations.length,
             separatorBuilder: (context, index) => const SizedBox(width: 12),
             itemBuilder: (context, index) {
               final item = recommendations[index];
-              return Container(
-                width: 240,
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(16),
-                  border: Border.all(color: AppColors.cardBorder),
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Stack(
-                      children: [
-                        ClipRRect(
-                          borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
-                          child: SizedBox(
-                            height: 110,
-                            width: double.infinity,
-                            child: Image.network(
-                              item['image']!,
-                              fit: BoxFit.cover,
-                            ),
-                          ),
-                        ),
-                        Positioned(
-                          top: 8,
-                          left: 8,
-                          child: Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
-                            decoration: BoxDecoration(
-                              color: Colors.black.withValues(alpha: 0.7),
-                              borderRadius: BorderRadius.circular(4),
-                            ),
-                            child: Text(
-                              item['jp']!,
-                              style: const TextStyle(
-                                fontSize: 9,
-                                fontWeight: FontWeight.bold,
-                                color: Colors.white,
-                              ),
-                            ),
-                          ),
-                        ),
-                        Positioned(
-                          top: 8,
-                          right: 8,
-                          child: Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
-                            decoration: BoxDecoration(
-                              color: AppColors.mint,
-                              borderRadius: BorderRadius.circular(4),
-                            ),
-                            child: Text(
-                              item['quota']!,
-                              style: const TextStyle(
-                                fontSize: 9,
-                                fontWeight: FontWeight.w800,
-                                color: AppColors.mintDark,
-                              ),
-                            ),
-                          ),
-                        ),
-                      ],
+              return GestureDetector(
+                onTap: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => TrainingDetailScreen(
+                        title: item['title']!,
+                        imageUrl: item['image']!,
+                      ),
                     ),
-                    Padding(
-                      padding: const EdgeInsets.all(10),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
+                  );
+                },
+                child: Container(
+                  width: 240,
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(color: AppColors.cardBorder),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Stack(
                         children: [
-                          Text(
-                            item['category']!,
-                            style: const TextStyle(
-                              fontSize: 9,
-                              fontWeight: FontWeight.w700,
-                              color: AppColors.textSecondary,
+                          ClipRRect(
+                            borderRadius: const BorderRadius.vertical(
+                              top: Radius.circular(16),
+                            ),
+                            child: SizedBox(
+                              height: 110,
+                              width: double.infinity,
+                              child: Image.network(
+                                item['image']!,
+                                fit: BoxFit.cover,
+                              ),
                             ),
                           ),
-                          const SizedBox(height: 3),
-                          Text(
-                            item['title']!,
-                            style: const TextStyle(
-                              fontSize: 13,
-                              fontWeight: FontWeight.w800,
-                              color: AppColors.textPrimary,
-                            ),
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                          const SizedBox(height: 3),
-                          Text(
-                            item['desc']!,
-                            style: const TextStyle(
-                              fontSize: 10,
-                              color: AppColors.textSecondary,
-                            ),
-                            maxLines: 2,
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                          const SizedBox(height: 8),
-                          Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                            children: [
-                              Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                                decoration: BoxDecoration(
-                                  color: AppColors.mintBg,
-                                  borderRadius: BorderRadius.circular(10),
-                                ),
-                                child: const Text(
-                                  'Subsidi Penuh',
-                                  style: TextStyle(
-                                    fontSize: 9,
-                                    fontWeight: FontWeight.w700,
-                                    color: AppColors.mintDark,
-                                  ),
+                          Positioned(
+                            top: 8,
+                            left: 8,
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 6,
+                                vertical: 3,
+                              ),
+                              decoration: BoxDecoration(
+                                color: Colors.black.withValues(alpha: 0.7),
+                                borderRadius: BorderRadius.circular(4),
+                              ),
+                              child: Text(
+                                item['jp']!,
+                                style: const TextStyle(
+                                  fontSize: 9,
+                                  fontWeight: FontWeight.bold,
+                                  color: Colors.white,
                                 ),
                               ),
-                              GestureDetector(
-                                onTap: () {
-                                  Navigator.push(
-                                    context,
-                                    MaterialPageRoute(
-                                      builder: (context) => TrainingDetailScreen(
-                                        title: item['title']!,
-                                        imageUrl: item['image']!,
-                                      ),
-                                    ),
-                                  );
-                                },
-                                child: Container(
-                                  width: 28,
-                                  height: 28,
-                                  decoration: BoxDecoration(
-                                    color: AppColors.background,
-                                    shape: BoxShape.circle,
-                                  ),
-                                  child: const Icon(
-                                    Icons.arrow_forward_rounded,
-                                    size: 14,
-                                    color: AppColors.primary,
-                                  ),
+                            ),
+                          ),
+                          Positioned(
+                            top: 8,
+                            right: 8,
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 6,
+                                vertical: 3,
+                              ),
+                              decoration: BoxDecoration(
+                                color: AppColors.mint,
+                                borderRadius: BorderRadius.circular(4),
+                              ),
+                              child: Text(
+                                item['quota']!,
+                                style: const TextStyle(
+                                  fontSize: 9,
+                                  fontWeight: FontWeight.w800,
+                                  color: AppColors.mintDark,
                                 ),
                               ),
-                            ],
+                            ),
                           ),
                         ],
                       ),
-                    ),
-                  ],
+                      Padding(
+                        padding: const EdgeInsets.all(10),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              item['category']!,
+                              style: const TextStyle(
+                                fontSize: 9,
+                                fontWeight: FontWeight.w700,
+                                color: AppColors.textSecondary,
+                              ),
+                            ),
+                            const SizedBox(height: 3),
+                            Text(
+                              item['title']!,
+                              style: const TextStyle(
+                                fontSize: 13,
+                                fontWeight: FontWeight.w800,
+                                color: AppColors.textPrimary,
+                              ),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                            const SizedBox(height: 3),
+                            Text(
+                              item['desc']!,
+                              style: const TextStyle(
+                                fontSize: 10,
+                                color: AppColors.textSecondary,
+                              ),
+                              maxLines: 2,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                            const SizedBox(height: 8),
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                Container(
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 8,
+                                    vertical: 3,
+                                  ),
+                                  decoration: BoxDecoration(
+                                    color: AppColors.mintBg,
+                                    borderRadius: BorderRadius.circular(10),
+                                  ),
+                                  child: const Text(
+                                    'Subsidi Penuh',
+                                    style: TextStyle(
+                                      fontSize: 9,
+                                      fontWeight: FontWeight.w700,
+                                      color: AppColors.mintDark,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
               );
             },
@@ -903,7 +937,11 @@ class _HomePageState extends State<HomePage> {
           children: [
             const Row(
               children: [
-                Icon(Icons.work_outline_rounded, size: 18, color: AppColors.textPrimary),
+                Icon(
+                  Icons.work_outline_rounded,
+                  size: 18,
+                  color: AppColors.textPrimary,
+                ),
                 SizedBox(width: 6),
                 Text(
                   'Peluang Kerja Untukmu',
@@ -984,7 +1022,10 @@ class _HomePageState extends State<HomePage> {
                       ),
                     ),
                     Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 8,
+                        vertical: 3,
+                      ),
                       decoration: BoxDecoration(
                         color: AppColors.mintBg,
                         borderRadius: BorderRadius.circular(6),
@@ -1012,11 +1053,18 @@ class _HomePageState extends State<HomePage> {
                 const SizedBox(height: 4),
                 Row(
                   children: [
-                    const Icon(Icons.location_on_outlined, size: 12, color: AppColors.textSecondary),
+                    const Icon(
+                      Icons.location_on_outlined,
+                      size: 12,
+                      color: AppColors.textSecondary,
+                    ),
                     const SizedBox(width: 4),
                     Text(
                       job['location']!,
-                      style: const TextStyle(fontSize: 11, color: AppColors.textSecondary),
+                      style: const TextStyle(
+                        fontSize: 11,
+                        color: AppColors.textSecondary,
+                      ),
                     ),
                   ],
                 ),
@@ -1026,7 +1074,11 @@ class _HomePageState extends State<HomePage> {
                   children: [
                     Row(
                       children: [
-                        const Icon(Icons.hourglass_bottom_rounded, size: 12, color: AppColors.orangeText),
+                        const Icon(
+                          Icons.hourglass_bottom_rounded,
+                          size: 12,
+                          color: AppColors.orangeText,
+                        ),
                         const SizedBox(width: 4),
                         Text(
                           'Tenggat: ${job['deadline']}',
@@ -1057,7 +1109,10 @@ class _HomePageState extends State<HomePage> {
                         ),
                         child: const Text(
                           'Lihat Detail',
-                          style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold),
+                          style: TextStyle(
+                            fontSize: 11,
+                            fontWeight: FontWeight.bold,
+                          ),
                         ),
                       ),
                     ),

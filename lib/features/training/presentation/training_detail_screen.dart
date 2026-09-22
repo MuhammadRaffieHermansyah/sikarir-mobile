@@ -166,7 +166,7 @@ class _TrainingDetailScreenState extends State<TrainingDetailScreen> {
                 const SnackBar(content: Text('Tautan pelatihan berhasil disalin!')),
               );
             },
-          ),
+          ),  
           Container(
             margin: const EdgeInsets.only(right: 16, left: 4),
             width: 36,
