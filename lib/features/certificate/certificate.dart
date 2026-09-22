@@ -1,1 +1,1 @@
-// Certificate feature exports.
+export 'presentation/certificate_screen.dart';

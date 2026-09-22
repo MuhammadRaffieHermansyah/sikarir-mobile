@@ -1,1 +1,1 @@
-// Profile feature exports.
+export 'presentation/profile_screen.dart';
