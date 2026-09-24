@@ -2,7 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:sikarir/core/constants/app_theme.dart';
 import 'package:sikarir/core/widgets/blk_header.dart';
+import 'package:sikarir/features/attendance/attendance.dart';
 import 'package:sikarir/features/auth/presentation/providers/auth_provider.dart';
+import 'package:sikarir/features/partner/partner.dart';
+import 'package:sikarir/features/training/training.dart';
 
 class ProfileScreen extends StatelessWidget {
   final VoidCallback? onNotificationTap;
@@ -210,11 +213,64 @@ class ProfileScreen extends StatelessWidget {
                   ),
                   const SizedBox(height: 16),
 
-                  _buildMenuItem(Icons.person_outline, 'Data Diri & NIK', 'Kelola informasi pribadi'),
-                  _buildMenuItem(Icons.school_outlined, 'Riwayat Pelatihan', 'Pelatihan vokasi & sertifikasi'),
-                  _buildMenuItem(Icons.assignment_turned_in_outlined, 'Presensi & Kehadiran', 'Cek rekap kehadiran kelas'),
-                  _buildMenuItem(Icons.settings_outlined, 'Pengaturan Akun', 'Notifikasi & keamanan'),
-                  _buildMenuItem(Icons.help_outline, 'Pusat Bantuan & Pengaduan', 'FAQ dan Layanan Kemnaker'),
+                  _buildMenuItem(
+                    Icons.person_outline,
+                    'Data Diri & NIK',
+                    'Kelola informasi pribadi',
+                    onTap: () {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                          content: Text('Informasi data diri terverifikasi SIAPkerja Kemnaker.'),
+                          behavior: SnackBarBehavior.floating,
+                        ),
+                      );
+                    },
+                  ),
+                  _buildMenuItem(
+                    Icons.school_outlined,
+                    'Riwayat & Kelas Pelatihan',
+                    'Daftar kelas vokasi & sertifikasi',
+                    onTap: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(builder: (_) => const MyClassesScreen()),
+                      );
+                    },
+                  ),
+                  _buildMenuItem(
+                    Icons.assignment_turned_in_outlined,
+                    'Presensi & Kehadiran',
+                    'Rekap kehadiran kelas & clock-in harian',
+                    onTap: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(builder: (_) => const AttendanceScreen()),
+                      );
+                    },
+                  ),
+                  _buildMenuItem(
+                    Icons.handshake_outlined,
+                    'Mitra Industri & Rekrutmen',
+                    'Perusahaan rekanan BLK & tempat magang OJT',
+                    onTap: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(builder: (_) => const PartnerListScreen()),
+                      );
+                    },
+                  ),
+                  _buildMenuItem(
+                    Icons.settings_outlined,
+                    'Pengaturan Akun',
+                    'Notifikasi & keamanan',
+                    onTap: () {},
+                  ),
+                  _buildMenuItem(
+                    Icons.help_outline,
+                    'Pusat Bantuan & Pengaduan',
+                    'FAQ dan Layanan Kemnaker',
+                    onTap: () {},
+                  ),
 
                   const SizedBox(height: 16),
                   SizedBox(
@@ -249,7 +305,12 @@ class ProfileScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildMenuItem(IconData icon, String title, String subtitle) {
+  Widget _buildMenuItem(
+    IconData icon,
+    String title,
+    String subtitle, {
+    VoidCallback? onTap,
+  }) {
     return Container(
       margin: const EdgeInsets.only(bottom: 10),
       child: Material(
@@ -280,7 +341,7 @@ class ProfileScreen extends StatelessWidget {
             style: const TextStyle(fontSize: 11, color: AppColors.textSecondary),
           ),
           trailing: const Icon(Icons.chevron_right, color: AppColors.textSecondary, size: 18),
-          onTap: () {},
+          onTap: onTap ?? () {},
         ),
       ),
     );
