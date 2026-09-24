@@ -15,7 +15,7 @@ class AuthRepository {
     return await authService.register(registerRequest);
   }
 
-  Future<void> logout() async {
-    await authService.logout();
+  Future<void> logout([String? token]) async {
+    await authService.logout(token);
   }
 }

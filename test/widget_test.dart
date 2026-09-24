@@ -6,9 +6,9 @@ void main() {
       (WidgetTester tester) async {
     await tester.pumpWidget(const SikarirApp());
 
-    expect(find.text('Selamat datang kembali'), findsOneWidget);
+    expect(find.text('Masuk Akun'), findsOneWidget);
     expect(find.text('Email'), findsOneWidget);
-    expect(find.text('Password'), findsOneWidget);
-    expect(find.text('Belum punya akun? Daftar'), findsOneWidget);
+    expect(find.text('Kata Sandi'), findsOneWidget);
+    expect(find.text('Daftar Sekarang'), findsOneWidget);
   });
 }

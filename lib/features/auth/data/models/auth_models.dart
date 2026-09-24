@@ -16,8 +16,8 @@ class LoginRequest {
 
   factory LoginRequest.fromMap(Map<String, dynamic> map) {
     return LoginRequest(
-      email: map['email'] as String,
-      password: map['password'] as String,
+      email: (map['email'] ?? '').toString(),
+      password: (map['password'] ?? '').toString(),
     );
   }
 }
@@ -45,16 +45,44 @@ class LoginResponse {
   }
 
   factory LoginResponse.fromMap(Map<String, dynamic> map) {
-    final data = _unwrap(map, const ['user']);
+    final Map<String, dynamic> data = _unwrap(map, const ['data', 'user', 'result']);
+    final Map<String, dynamic> userData = _unwrap(data, const ['user', 'profile']);
+
+    final token = map['token'] ??
+        map['access_token'] ??
+        data['token'] ??
+        data['access_token'] ??
+        '';
+
+    final userId = userData['id'] ??
+        userData['userId'] ??
+        userData['user_id'] ??
+        data['id'] ??
+        data['userId'] ??
+        data['user_id'] ??
+        map['id'] ??
+        '';
+
+    final name = userData['name'] ??
+        userData['full_name'] ??
+        data['name'] ??
+        map['name'] ??
+        '';
+
+    final email = userData['email'] ??
+        data['email'] ??
+        map['email'] ??
+        '';
 
     return LoginResponse(
-      token: (map['token'] ?? map['access_token'] ?? '').toString(),
-      userId: (data['id'] ?? data['userId'] ?? '').toString(),
-      name: (data['name'] ?? '').toString(),
-      email: (data['email'] ?? '').toString(),
+      token: token.toString(),
+      userId: userId.toString(),
+      name: name.toString(),
+      email: email.toString(),
     );
   }
 }
+
 class RegisterRequest {
   final String name;
   final String email;
@@ -76,9 +104,9 @@ class RegisterRequest {
 
   factory RegisterRequest.fromMap(Map<String, dynamic> map) {
     return RegisterRequest(
-      name: map['name'] as String,
-      email: map['email'] as String,
-      password: map['password'] as String,
+      name: (map['name'] ?? '').toString(),
+      email: (map['email'] ?? '').toString(),
+      password: (map['password'] ?? '').toString(),
     );
   }
 }
@@ -106,12 +134,40 @@ class RegisterResponse {
   }
 
   factory RegisterResponse.fromMap(Map<String, dynamic> map) {
-    final data = _unwrap(map, const ['user']);
+    final Map<String, dynamic> data = _unwrap(map, const ['data', 'user', 'result']);
+    final Map<String, dynamic> userData = _unwrap(data, const ['user', 'profile']);
+
+    final token = map['token'] ??
+        map['access_token'] ??
+        data['token'] ??
+        data['access_token'] ??
+        '';
+
+    final userId = userData['id'] ??
+        userData['userId'] ??
+        userData['user_id'] ??
+        data['id'] ??
+        data['userId'] ??
+        data['user_id'] ??
+        map['id'] ??
+        '';
+
+    final name = userData['name'] ??
+        userData['full_name'] ??
+        data['name'] ??
+        map['name'] ??
+        '';
+
+    final email = userData['email'] ??
+        data['email'] ??
+        map['email'] ??
+        '';
+
     return RegisterResponse(
-      token: (map['token'] ?? map['access_token'] ?? '') as String,
-      userId: (data['id'] ?? data['userId'] ?? '') as String,
-      name: (data['name'] ?? '') as String,
-      email: (data['email'] ?? '') as String,
+      token: token.toString(),
+      userId: userId.toString(),
+      name: name.toString(),
+      email: email.toString(),
     );
   }
 }
@@ -124,6 +180,8 @@ Map<String, dynamic> _unwrap(
     final value = map[key];
     if (value is Map<String, dynamic>) {
       return value;
+    } else if (value is Map) {
+      return Map<String, dynamic>.from(value);
     }
   }
   return map;

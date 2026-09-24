@@ -11,10 +11,12 @@ class AuthProvider extends ChangeNotifier {
   bool _isLoading = false;
   bool _isAuthenticated = false;
   LoginResponse? _user;
+  String? _errorMessage;
 
   bool get isLoading => _isLoading;
   bool get isAuthenticated => _isAuthenticated;
   LoginResponse? get user => _user;
+  String? get errorMessage => _errorMessage;
 
   set isLoading(bool value) {
     _isLoading = value;
@@ -31,42 +33,68 @@ class AuthProvider extends ChangeNotifier {
     notifyListeners();
   }
 
+  void clearError() {
+    _errorMessage = null;
+    notifyListeners();
+  }
+
   Future<void> login(LoginRequest loginRequest) async {
-    isLoading = true;
+    _isLoading = true;
+    _errorMessage = null;
+    notifyListeners();
+
     try {
       final response = await _authRepository.login(loginRequest);
-      user = response;
-      isAuthenticated = true;
+      _user = response;
+      _isAuthenticated = true;
     } catch (e) {
+      _errorMessage = e.toString().replaceFirst('Exception: ', '');
       rethrow;
     } finally {
-      isLoading = false;
+      _isLoading = false;
+      notifyListeners();
     }
   }
 
   Future<void> register(RegisterRequest registerRequest) async {
-    isLoading = true;
+    _isLoading = true;
+    _errorMessage = null;
+    notifyListeners();
+
     try {
       final response = await _authRepository.register(registerRequest);
-      // After successful registration, auto-login
-      user = LoginResponse(
+      // Auto-authenticate after successful registration
+      _user = LoginResponse(
         token: response.token,
         userId: response.userId,
         name: response.name,
         email: response.email,
       );
-      isAuthenticated = true;
+      _isAuthenticated = true;
     } catch (e) {
+      _errorMessage = e.toString().replaceFirst('Exception: ', '');
       rethrow;
     } finally {
-      isLoading = false;
+      _isLoading = false;
+      notifyListeners();
     }
   }
 
   Future<void> logout() async {
-    await _authRepository.logout();
-    isAuthenticated = false;
-    user = null;
+    _isLoading = true;
     notifyListeners();
+
+    final currentToken = _user?.token;
+    try {
+      await _authRepository.logout(currentToken);
+    } catch (_) {
+      // Ignore network errors on logout to allow local logout
+    } finally {
+      _isAuthenticated = false;
+      _user = null;
+      _isLoading = false;
+      _errorMessage = null;
+      notifyListeners();
+    }
   }
 }
