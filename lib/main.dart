@@ -1,25 +1,43 @@
 import 'package:flutter/material.dart';
+import 'package:sikarir/app/router/app_router.dart';
 import 'package:sikarir/core/constants/app_theme.dart';
+import 'package:sikarir/features/auth/presentation/pages/login_page.dart';
+import 'package:sikarir/features/auth/presentation/providers/auth_provider.dart';
 import 'package:sikarir/features/certificate/presentation/certificate_screen.dart';
 import 'package:sikarir/features/home/home.dart';
 import 'package:sikarir/features/job/presentation/job_list_screen.dart';
 import 'package:sikarir/features/profile/presentation/profile_screen.dart';
 import 'package:sikarir/features/training/presentation/training_catalog_screen.dart';
+import 'package:provider/provider.dart';
 
 void main() {
   runApp(const SikarirApp());
 }
 
-class SikarirApp extends StatelessWidget {
+class SikarirApp extends StatefulWidget {
   const SikarirApp({super.key});
 
   @override
+  State<SikarirApp> createState() => _SikarirAppState();
+}
+
+class _SikarirAppState extends State<SikarirApp> {
+  @override
   Widget build(BuildContext context) {
-    return MaterialApp(
-      title: 'BLK Connect',
-      debugShowCheckedModeBanner: false,
-      theme: AppTheme.lightTheme,
-      home: const MainNavigationScreen(),
+    return ChangeNotifierProvider(
+      create: (_) => AuthProvider(),
+      builder: (context, child) {
+        final authProvider = context.watch<AuthProvider>();
+        return MaterialApp(
+          title: 'SIKARIR',
+          debugShowCheckedModeBanner: false,
+          theme: AppTheme.lightTheme,
+          onGenerateRoute: AppRouter.onGenerateRoute,
+          home: authProvider.isAuthenticated
+              ? const MainNavigationScreen()
+              : const LoginScreen(),
+        );
+      },
     );
   }
 }
