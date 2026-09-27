@@ -48,7 +48,7 @@ class BlkHeader extends StatelessWidget {
             mainAxisSize: MainAxisSize.min,
             children: [
               const Text(
-                'BLK Connect',
+                'siKarir - BLK Jember',
                 style: TextStyle(
                   fontSize: 17,
                   fontWeight: FontWeight.w800,
