@@ -33,7 +33,7 @@ class SikarirApp extends StatelessWidget {
       builder: (context, child) {
         final authProvider = context.watch<AuthProvider>();
         return MaterialApp(
-          title: 'SIKARIR',
+          title: 'siKarir',
           debugShowCheckedModeBanner: false,
           theme: AppTheme.lightTheme,
           onGenerateRoute: AppRouter.onGenerateRoute,
