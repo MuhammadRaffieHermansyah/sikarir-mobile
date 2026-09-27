@@ -1,7 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import 'package:sikarir/core/constants/app_theme.dart';
 import 'package:sikarir/core/widgets/blk_header.dart';
-import 'package:sikarir/features/training/presentation/training_detail_screen.dart';
+import 'package:sikarir/features/attendance/attendance.dart';
+import 'package:sikarir/features/auth/auth.dart';
+import 'package:sikarir/features/training/training.dart';
 
 class HomePage extends StatefulWidget {
   final VoidCallback? onNotificationTap;
@@ -73,6 +76,11 @@ class _HomePageState extends State<HomePage> {
   }
 
   Widget _buildGreetingSection() {
+    final authProvider = context.watch<AuthProvider>();
+    final userName = (authProvider.user != null && authProvider.user!.name.trim().isNotEmpty)
+        ? authProvider.user!.name
+        : 'Peserta SIKARIR';
+
     return Row(
       children: [
         Expanded(
@@ -88,9 +96,9 @@ class _HomePageState extends State<HomePage> {
                 ),
               ),
               const SizedBox(height: 2),
-              const Text(
-                'Rizky Adityaputra',
-                style: TextStyle(
+              Text(
+                userName,
+                style: const TextStyle(
                   fontSize: 19,
                   fontWeight: FontWeight.w800,
                   color: AppColors.textPrimary,
@@ -267,44 +275,74 @@ class _HomePageState extends State<HomePage> {
 
   Widget _buildStatsRow() {
     final stats = [
-      {'val': '03', 'label': 'Pelatihan\nDiikuti', 'color': AppColors.primary},
-      {'val': '92%', 'label': 'Presensi\nKelas', 'color': AppColors.mintDark},
-      {'val': '02', 'label': 'Sertifikat\nResmi', 'color': AppColors.primary},
-      {'val': '08', 'label': 'Peluang\nKerja', 'color': AppColors.orange},
+      {
+        'val': '03',
+        'label': 'Pelatihan\nDiikuti',
+        'color': AppColors.primary,
+        'onTap': () => Navigator.push(
+              context,
+              MaterialPageRoute(builder: (_) => const MyClassesScreen()),
+            ),
+      },
+      {
+        'val': '92%',
+        'label': 'Presensi\nKelas',
+        'color': AppColors.mintDark,
+        'onTap': () => Navigator.push(
+              context,
+              MaterialPageRoute(builder: (_) => const AttendanceScreen()),
+            ),
+      },
+      {
+        'val': '02',
+        'label': 'Sertifikat\nResmi',
+        'color': AppColors.primary,
+        'onTap': () => widget.onSwitchTab?.call(3),
+      },
+      {
+        'val': '08',
+        'label': 'Peluang\nKerja',
+        'color': AppColors.orange,
+        'onTap': () => widget.onSwitchTab?.call(2),
+      },
     ];
 
     return Row(
       children: stats.map((s) {
         return Expanded(
-          child: Container(
-            margin: const EdgeInsets.symmetric(horizontal: 3),
-            padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 4),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(14),
-              border: Border.all(color: AppColors.cardBorder),
-            ),
-            child: Column(
-              children: [
-                Text(
-                  s['val'] as String,
-                  style: TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.w800,
-                    color: s['color'] as Color,
+          child: InkWell(
+            onTap: s['onTap'] as VoidCallback?,
+            borderRadius: BorderRadius.circular(14),
+            child: Container(
+              margin: const EdgeInsets.symmetric(horizontal: 3),
+              padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 4),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(14),
+                border: Border.all(color: AppColors.cardBorder),
+              ),
+              child: Column(
+                children: [
+                  Text(
+                    s['val'] as String,
+                    style: TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.w800,
+                      color: s['color'] as Color,
+                    ),
                   ),
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  s['label'] as String,
-                  textAlign: TextAlign.center,
-                  style: const TextStyle(
-                    fontSize: 10,
-                    color: AppColors.textSecondary,
-                    height: 1.2,
+                  const SizedBox(height: 4),
+                  Text(
+                    s['label'] as String,
+                    textAlign: TextAlign.center,
+                    style: const TextStyle(
+                      fontSize: 10,
+                      color: AppColors.textSecondary,
+                      height: 1.2,
+                    ),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
           ),
         );
@@ -339,12 +377,13 @@ class _HomePageState extends State<HomePage> {
             ),
             GestureDetector(
               onTap: () {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('Membuka riwayat pelatihan...')),
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (_) => const MyClassesScreen()),
                 );
               },
               child: const Text(
-                'Riwayat',
+                'Lihat Kelas',
                 style: TextStyle(
                   fontSize: 12,
                   fontWeight: FontWeight.w700,
@@ -503,15 +542,14 @@ class _HomePageState extends State<HomePage> {
                 height: 42,
                 child: ElevatedButton.icon(
                   onPressed: () {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
-                        content: Text('Membuka modul dan presensi...'),
-                      ),
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(builder: (_) => const AttendanceScreen()),
                     );
                   },
-                  icon: const Icon(Icons.sync_alt_rounded, size: 16),
+                  icon: const Icon(Icons.fingerprint_rounded, size: 16),
                   label: const Text(
-                    'Buka Modul & Presensi',
+                    'Presensi & Modul Kelas',
                     style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
                   ),
                   style: ElevatedButton.styleFrom(
@@ -537,8 +575,8 @@ class _HomePageState extends State<HomePage> {
       children: [
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: const [
-            Row(
+          children: [
+            const Row(
               children: [
                 Icon(
                   Icons.calendar_today_outlined,
@@ -547,7 +585,7 @@ class _HomePageState extends State<HomePage> {
                 ),
                 SizedBox(width: 6),
                 Text(
-                  'Jadwal Berikutnya',
+                  'Jadwal Pelatihan',
                   style: TextStyle(
                     fontSize: 15,
                     fontWeight: FontWeight.w800,
@@ -556,9 +594,21 @@ class _HomePageState extends State<HomePage> {
                 ),
               ],
             ),
-            Text(
-              'Minggu ke-4',
-              style: TextStyle(fontSize: 11, color: AppColors.textSecondary),
+            GestureDetector(
+              onTap: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (_) => const TrainingScheduleScreen()),
+                );
+              },
+              child: const Text(
+                'Semua Jadwal',
+                style: TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w700,
+                  color: AppColors.mintDark,
+                ),
+              ),
             ),
           ],
         ),

@@ -1,2 +1,13 @@
+export 'data/models/training_class_model.dart';
+export 'data/models/training_schedule_model.dart';
+export 'data/services/training_class_service.dart';
+export 'data/services/training_schedule_service.dart';
+export 'data/repositories/training_class_repository.dart';
+export 'data/repositories/training_schedule_repository.dart';
+export 'presentation/providers/training_class_provider.dart';
+export 'presentation/providers/training_schedule_provider.dart';
+export 'presentation/pages/my_classes_screen.dart';
+export 'presentation/pages/class_detail_screen.dart';
+export 'presentation/pages/training_schedule_screen.dart';
 export 'presentation/training_catalog_screen.dart';
 export 'presentation/training_detail_screen.dart';

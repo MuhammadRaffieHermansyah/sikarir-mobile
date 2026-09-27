@@ -1,10 +1,15 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+import 'package:sikarir/app/router/app_router.dart';
 import 'package:sikarir/core/constants/app_theme.dart';
-import 'package:sikarir/features/certificate/presentation/certificate_screen.dart';
+import 'package:sikarir/features/attendance/attendance.dart';
+import 'package:sikarir/features/auth/auth.dart';
+import 'package:sikarir/features/certificate/certificate.dart';
 import 'package:sikarir/features/home/home.dart';
-import 'package:sikarir/features/job/presentation/job_list_screen.dart';
+import 'package:sikarir/features/job/job.dart';
+import 'package:sikarir/features/partner/partner.dart';
 import 'package:sikarir/features/profile/presentation/profile_screen.dart';
-import 'package:sikarir/features/training/presentation/training_catalog_screen.dart';
+import 'package:sikarir/features/training/training.dart';
 
 void main() {
   runApp(const SikarirApp());
@@ -15,11 +20,28 @@ class SikarirApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
-      title: 'BLK Connect',
-      debugShowCheckedModeBanner: false,
-      theme: AppTheme.lightTheme,
-      home: const MainNavigationScreen(),
+    return MultiProvider(
+      providers: [
+        ChangeNotifierProvider(create: (_) => AuthProvider()),
+        ChangeNotifierProvider(create: (_) => AttendanceProvider()),
+        ChangeNotifierProvider(create: (_) => TrainingClassProvider()),
+        ChangeNotifierProvider(create: (_) => TrainingScheduleProvider()),
+        ChangeNotifierProvider(create: (_) => JobProvider()),
+        ChangeNotifierProvider(create: (_) => CertificateProvider()),
+        ChangeNotifierProvider(create: (_) => PartnerProvider()),
+      ],
+      builder: (context, child) {
+        final authProvider = context.watch<AuthProvider>();
+        return MaterialApp(
+          title: 'siKarir',
+          debugShowCheckedModeBanner: false,
+          theme: AppTheme.lightTheme,
+          onGenerateRoute: AppRouter.onGenerateRoute,
+          home: authProvider.isAuthenticated
+              ? const MainNavigationScreen()
+              : const LoginScreen(),
+        );
+      },
     );
   }
 }
@@ -54,7 +76,7 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               const Text(
-                'Notifikasi',
+                'Notifikasi Peserta',
                 style: TextStyle(
                   fontSize: 18,
                   fontWeight: FontWeight.bold,
@@ -101,7 +123,7 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
                   ),
                 ),
                 title: const Text(
-                  'Loker Baru Sesuai Keahlian',
+                  'Loker Baru Mitra BLK',
                   style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold),
                 ),
                 subtitle: const Text(
@@ -145,7 +167,7 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
       bottomNavigationBar: Container(
         decoration: BoxDecoration(
           color: Colors.white,
-          border: Border(
+          border: const Border(
             top: BorderSide(color: AppColors.cardBorder, width: 1),
           ),
           boxShadow: [
