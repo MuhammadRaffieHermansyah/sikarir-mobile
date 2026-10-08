@@ -1,7 +1,7 @@
 class ApiConstants {
   ApiConstants._();
 
-  static const String ipConfig = '192.168.0.7';
+  static const String ipConfig = '10.10.5.61';
 
   static const String baseUrl = 'http://$ipConfig:8000/api';
 

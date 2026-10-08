@@ -77,7 +77,8 @@ class _HomePageState extends State<HomePage> {
 
   Widget _buildGreetingSection() {
     final authProvider = context.watch<AuthProvider>();
-    final userName = (authProvider.user != null && authProvider.user!.name.trim().isNotEmpty)
+    final userName =
+        (authProvider.user != null && authProvider.user!.name.trim().isNotEmpty)
         ? authProvider.user!.name
         : 'Peserta SIKARIR';
 
@@ -280,18 +281,18 @@ class _HomePageState extends State<HomePage> {
         'label': 'Pelatihan\nDiikuti',
         'color': AppColors.primary,
         'onTap': () => Navigator.push(
-              context,
-              MaterialPageRoute(builder: (_) => const MyClassesScreen()),
-            ),
+          context,
+          MaterialPageRoute(builder: (_) => const MyClassesScreen()),
+        ),
       },
       {
         'val': '92%',
         'label': 'Presensi\nKelas',
         'color': AppColors.mintDark,
         'onTap': () => Navigator.push(
-              context,
-              MaterialPageRoute(builder: (_) => const AttendanceScreen()),
-            ),
+          context,
+          MaterialPageRoute(builder: (_) => const AttendanceScreen()),
+        ),
       },
       {
         'val': '02',
@@ -544,7 +545,9 @@ class _HomePageState extends State<HomePage> {
                   onPressed: () {
                     Navigator.push(
                       context,
-                      MaterialPageRoute(builder: (_) => const AttendanceScreen()),
+                      MaterialPageRoute(
+                        builder: (_) => const AttendanceScreen(),
+                      ),
                     );
                   },
                   icon: const Icon(Icons.fingerprint_rounded, size: 16),
@@ -598,7 +601,9 @@ class _HomePageState extends State<HomePage> {
               onTap: () {
                 Navigator.push(
                   context,
-                  MaterialPageRoute(builder: (_) => const TrainingScheduleScreen()),
+                  MaterialPageRoute(
+                    builder: (_) => const TrainingScheduleScreen(),
+                  ),
                 );
               },
               child: const Text(
@@ -795,7 +800,7 @@ class _HomePageState extends State<HomePage> {
         ),
         const SizedBox(height: 12),
         SizedBox(
-          height: 220,
+          height: 230,
           child: ListView.separated(
             scrollDirection: Axis.horizontal,
             itemCount: recommendations.length,
