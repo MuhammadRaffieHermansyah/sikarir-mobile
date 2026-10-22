@@ -80,6 +80,7 @@ class ProfileScreen extends StatelessWidget {
                         Navigator.pop(dialogContext);
                         await authProvider.logout();
                         if (context.mounted) {
+                          Navigator.of(context).pushNamedAndRemoveUntil('/login', (route) => false);
                           ScaffoldMessenger.of(context).showSnackBar(
                             SnackBar(
                               content: const Row(

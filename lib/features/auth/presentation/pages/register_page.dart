@@ -91,7 +91,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
             margin: const EdgeInsets.all(16),
           ),
         );
-        navigator.popUntil((route) => route.isFirst);
+        navigator.pushNamedAndRemoveUntil('/main', (route) => false);
       }
     } catch (e) {
       if (mounted) {

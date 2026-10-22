@@ -5,15 +5,23 @@ import 'package:sikarir/features/auth/data/repositories/auth_repository.dart';
 class AuthProvider extends ChangeNotifier {
   final AuthRepository _authRepository;
 
-  AuthProvider({AuthRepository? authRepository})
-      : _authRepository = authRepository ?? AuthRepository();
+  AuthProvider({
+    AuthRepository? authRepository,
+    bool autoInit = false,
+  })  : _authRepository = authRepository ?? AuthRepository() {
+    if (autoInit) {
+      init();
+    }
+  }
 
   bool _isLoading = false;
+  bool _isInitialized = false;
   bool _isAuthenticated = false;
   LoginResponse? _user;
   String? _errorMessage;
 
   bool get isLoading => _isLoading;
+  bool get isInitialized => _isInitialized;
   bool get isAuthenticated => _isAuthenticated;
   LoginResponse? get user => _user;
   String? get errorMessage => _errorMessage;
@@ -36,6 +44,36 @@ class AuthProvider extends ChangeNotifier {
   void clearError() {
     _errorMessage = null;
     notifyListeners();
+  }
+
+  /// Memeriksa dan memuat session user tersimpan dari SharedPreferences
+  Future<void> init() async {
+    _isLoading = true;
+    notifyListeners();
+
+    try {
+      final savedUser = await _authRepository.getSavedUser();
+      if (savedUser != null && savedUser.token.trim().isNotEmpty) {
+        _user = savedUser;
+        _isAuthenticated = true;
+        if (kDebugMode) {
+          debugPrint("AuthProvider: Auto-login berhasil untuk user ${savedUser.name} (${savedUser.email})");
+        }
+      } else {
+        _user = null;
+        _isAuthenticated = false;
+      }
+    } catch (e) {
+      if (kDebugMode) {
+        debugPrint("AuthProvider Error loading saved session: $e");
+      }
+      _user = null;
+      _isAuthenticated = false;
+    } finally {
+      _isLoading = false;
+      _isInitialized = true;
+      notifyListeners();
+    }
   }
 
   Future<void> login(LoginRequest loginRequest) async {
@@ -97,4 +135,4 @@ class AuthProvider extends ChangeNotifier {
       notifyListeners();
     }
   }
-}
+}

@@ -9,20 +9,28 @@ import 'package:sikarir/features/home/home.dart';
 import 'package:sikarir/features/job/job.dart';
 import 'package:sikarir/features/partner/partner.dart';
 import 'package:sikarir/features/profile/presentation/profile_screen.dart';
+import 'package:sikarir/features/splash/splash.dart';
 import 'package:sikarir/features/training/training.dart';
 
-void main() {
-  runApp(const SikarirApp());
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  final authProvider = AuthProvider();
+  await authProvider.init();
+  runApp(SikarirApp(authProvider: authProvider));
 }
 
 class SikarirApp extends StatelessWidget {
-  const SikarirApp({super.key});
+  final AuthProvider? authProvider;
+
+  const SikarirApp({super.key, this.authProvider});
 
   @override
   Widget build(BuildContext context) {
     return MultiProvider(
       providers: [
-        ChangeNotifierProvider(create: (_) => AuthProvider()),
+        ChangeNotifierProvider.value(
+          value: authProvider ?? (AuthProvider()..init()),
+        ),
         ChangeNotifierProvider(create: (_) => AttendanceProvider()),
         ChangeNotifierProvider(create: (_) => TrainingClassProvider()),
         ChangeNotifierProvider(create: (_) => TrainingScheduleProvider()),
@@ -30,18 +38,13 @@ class SikarirApp extends StatelessWidget {
         ChangeNotifierProvider(create: (_) => CertificateProvider()),
         ChangeNotifierProvider(create: (_) => PartnerProvider()),
       ],
-      builder: (context, child) {
-        final authProvider = context.watch<AuthProvider>();
-        return MaterialApp(
-          title: 'siKarir',
-          debugShowCheckedModeBanner: false,
-          theme: AppTheme.lightTheme,
-          onGenerateRoute: AppRouter.onGenerateRoute,
-          home: authProvider.isAuthenticated
-              ? const MainNavigationScreen()
-              : const LoginScreen(),
-        );
-      },
+      child: MaterialApp(
+        title: 'siKarir',
+        debugShowCheckedModeBanner: false,
+        theme: AppTheme.lightTheme,
+        onGenerateRoute: AppRouter.onGenerateRoute,
+        home: const SplashScreen(),
+      ),
     );
   }
 }

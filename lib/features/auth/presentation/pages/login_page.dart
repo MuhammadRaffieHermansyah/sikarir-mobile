@@ -63,6 +63,7 @@ class _LoginScreenState extends State<LoginScreen> {
             margin: const EdgeInsets.all(16),
           ),
         );
+        Navigator.of(context).pushNamedAndRemoveUntil('/main', (route) => false);
       }
     } catch (e) {
       if (mounted) {

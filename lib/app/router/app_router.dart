@@ -2,11 +2,18 @@ import 'package:flutter/material.dart';
 import 'package:sikarir/features/attendance/attendance.dart';
 import 'package:sikarir/features/auth/auth.dart';
 import 'package:sikarir/features/partner/partner.dart';
+import 'package:sikarir/features/splash/splash.dart';
 import 'package:sikarir/features/training/training.dart';
+import 'package:sikarir/main.dart';
 
 class AppRouter {
   static Route<dynamic> onGenerateRoute(RouteSettings settings) {
     switch (settings.name) {
+      case '/':
+      case '/splash':
+        return _materialRoute(const SplashScreen());
+      case '/main':
+        return _materialRoute(const MainNavigationScreen());
       case '/login':
         return _materialRoute(const LoginScreen());
       case '/register':
@@ -27,4 +34,4 @@ class AppRouter {
   static Route<dynamic> _materialRoute(Widget child) {
     return MaterialPageRoute(builder: (context) => child);
   }
-}
+}
