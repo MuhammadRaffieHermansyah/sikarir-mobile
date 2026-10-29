@@ -1,6 +1,7 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:permission_handler/permission_handler.dart';
 import 'package:provider/provider.dart';
 import 'package:sikarir/core/constants/app_theme.dart';
 import 'package:sikarir/features/auth/presentation/providers/auth_provider.dart';
@@ -131,17 +132,60 @@ class _CompleteProfileScreenState extends State<CompleteProfileScreen> {
   }
 
   Future<void> _pickPasFoto(ImageSource source) async {
-    final picker = ImagePicker();
-    final picked = await picker.pickImage(
-      source: source,
-      maxWidth: 1200,
-      maxHeight: 1600,
-      imageQuality: 85,
-    );
-    if (picked != null) {
-      setState(() {
-        _pasFotoFile = File(picked.path);
-      });
+    try {
+      if (source == ImageSource.camera) {
+        final status = await Permission.camera.request();
+        if (status.isPermanentlyDenied) {
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: const Text(
+                    'Izin kamera dinonaktifkan. Silakan aktifkan di Pengaturan.'),
+                action: SnackBarAction(
+                  label: 'Pengaturan',
+                  textColor: Colors.white,
+                  onPressed: () => openAppSettings(),
+                ),
+                backgroundColor: AppColors.orange,
+              ),
+            );
+          }
+          return;
+        } else if (!status.isGranted) {
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text('Izin kamera diperlukan untuk mengambil foto.'),
+                backgroundColor: AppColors.orange,
+              ),
+            );
+          }
+          return;
+        }
+      }
+
+      final picker = ImagePicker();
+      final picked = await picker.pickImage(
+        source: source,
+        maxWidth: 1200,
+        maxHeight: 1600,
+        imageQuality: 85,
+      );
+      if (picked != null) {
+        setState(() {
+          _pasFotoFile = File(picked.path);
+        });
+      }
+    } catch (e) {
+      debugPrint('Error pick image: $e');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Gagal memilih foto: $e'),
+            backgroundColor: Colors.red.shade700,
+          ),
+        );
+      }
     }
   }
 

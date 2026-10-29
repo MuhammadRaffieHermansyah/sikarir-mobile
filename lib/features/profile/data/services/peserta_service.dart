@@ -79,7 +79,9 @@ class PesertaService {
 
       // Tambahkan file foto
       final ext = pasFotoFile.path.split('.').last.toLowerCase();
-      final mimeType = ext == 'png' ? 'image/png' : 'image/jpeg';
+      final mimeType = ext == 'png'
+          ? 'image/png'
+          : (ext == 'webp' ? 'image/webp' : 'image/jpeg');
       request.files.add(await http.MultipartFile.fromPath(
         'pas_foto',
         pasFotoFile.path,
