@@ -10,7 +10,12 @@ class JobRepository {
     return await service.getJobs(token);
   }
 
-  Future<void> applyJob(String jobId, [String? token]) async {
-    await service.applyJob(jobId, token);
+  /// Returns a Map with keys: success (bool), message (String), need_profile_completion (bool)
+  Future<Map<String, dynamic>> applyJob(String jobId, [String? token]) async {
+    return await service.applyJob(jobId, token);
+  }
+
+  Future<List<Map<String, dynamic>>> getMyApplications([String? token]) async {
+    return await service.getMyApplications(token);
   }
 }

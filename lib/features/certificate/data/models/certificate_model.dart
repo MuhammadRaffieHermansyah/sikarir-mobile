@@ -22,16 +22,19 @@ class CertificateModel {
   });
 
   factory CertificateModel.fromMap(Map<String, dynamic> map) {
+    final jadwal = map['jadwal'] as Map<String, dynamic>?;
+    final pelatihan = jadwal?['pelatihan'] as Map<String, dynamic>?;
+
     return CertificateModel(
-      id: (map['id'] ?? map['_id'] ?? '').toString(),
-      title: (map['nama_sertifikat'] ?? map['judul'] ?? map['title'] ?? 'Sertifikat Kompetensi').toString(),
-      issuer: (map['penerbit'] ?? map['lembaga'] ?? map['issuer'] ?? 'BNSP / BLK').toString(),
+      id: (map['id_sertifikat'] ?? map['id'] ?? map['_id'] ?? '').toString(),
+      title: (pelatihan?['nama_pelatihan'] ?? map['nama_sertifikat'] ?? map['judul'] ?? map['title'] ?? 'Sertifikat Kompetensi').toString(),
+      issuer: (map['penerbit'] ?? map['lembaga'] ?? map['issuer'] ?? 'Badan Nasional Sertifikasi Profesi (BNSP)').toString(),
       issueDate: (map['tanggal_terbit'] ?? map['issue_date'] ?? '2026').toString(),
       validUntil: (map['masa_berlaku'] ?? map['valid_until'] ?? 'Seumur Hidup').toString(),
-      certificateNumber: (map['nomor_sertifikat'] ?? map['code'] ?? map['no_reg'] ?? 'REG-BNSP-001').toString(),
+      certificateNumber: (map['no_sertifikat'] ?? map['nomor_sertifikat'] ?? map['code'] ?? 'REG-BNSP-001').toString(),
       status: (map['status'] ?? 'aktif').toString().toLowerCase(),
       fileUrl: (map['file_url'] ?? map['download_url'] ?? '').toString(),
-      category: (map['kejuruan'] ?? map['category'] ?? 'TIK & Desain').toString(),
+      category: (pelatihan?['kategori'] ?? map['kejuruan'] ?? map['category'] ?? 'Pelatihan Kejuruan').toString(),
     );
   }
 

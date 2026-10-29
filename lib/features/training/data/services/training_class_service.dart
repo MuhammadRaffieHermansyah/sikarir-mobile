@@ -22,9 +22,13 @@ class TrainingClassService {
 
   Future<List<TrainingClassModel>> getMyClasses([String? token]) async {
     try {
+      final endpoint = (token != null && token.isNotEmpty)
+          ? ApiConstants.kelasPelatihanMe
+          : ApiConstants.kelasPelatihan;
+
       final response = await client
           .get(
-            Uri.parse(ApiConstants.kelasPelatihan),
+            Uri.parse(endpoint),
             headers: _headers(token),
           )
           .timeout(const Duration(seconds: 4));

@@ -11,6 +11,8 @@ dependencies:
     sdk: flutter
   http: ^1.2.0
   provider: ^6.0.0
+  geolocator: ^13.0.1         # GPS & lokasi
+  permission_handler: ^11.3.0  # Izin runtime Android/iOS
 
 dev_dependencies:
   flutter_test:

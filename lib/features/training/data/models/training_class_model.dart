@@ -43,21 +43,27 @@ class TrainingClassModel {
     final total = (map['total_sesi'] ?? map['total_sessions'] ?? 16) as num;
     final calcProgress = total > 0 ? (completed / total).toDouble().clamp(0.0, 1.0) : 0.0;
 
+    final jadwal = map['jadwal'] as Map<String, dynamic>?;
+    final pelatihan = jadwal?['pelatihan'] as Map<String, dynamic>?;
+    final instruktur = jadwal?['instruktur'] as Map<String, dynamic>?;
+    final instrukturUser = instruktur?['user'] as Map<String, dynamic>?;
+    final ruangan = (jadwal?['ruangan_workshop'] ?? jadwal?['ruanganWorkshop'] ?? jadwal?['ruangan']) as Map<String, dynamic>?;
+
     return TrainingClassModel(
-      id: (map['id'] ?? map['_id'] ?? '').toString(),
-      pelatihanId: (map['pelatihan_id'] ?? '').toString(),
-      title: (map['nama_kelas'] ?? map['nama'] ?? map['title'] ?? 'Kelas Pelatihan').toString(),
-      code: (map['kode_kelas'] ?? map['code'] ?? 'BLK-2026-01').toString(),
-      category: (map['kategori'] ?? map['kejuruan'] ?? 'Teknologi Informasi').toString(),
-      instructor: (map['instruktur'] ?? map['pengajar'] ?? 'Instruktur BLK').toString(),
-      room: (map['ruangan'] ?? map['room'] ?? 'Lab 01').toString(),
-      startDate: (map['tanggal_mulai'] ?? map['start_date'] ?? '01 September 2026').toString(),
-      endDate: (map['tanggal_selesai'] ?? map['end_date'] ?? '30 Oktober 2026').toString(),
+      id: (map['id_kelas'] ?? map['id'] ?? map['_id'] ?? '').toString(),
+      pelatihanId: (map['pelatihan_id'] ?? jadwal?['id_pelatihan'] ?? '').toString(),
+      title: (pelatihan?['nama_pelatihan'] ?? map['nama_kelas'] ?? map['nama'] ?? map['title'] ?? 'Kelas Pelatihan').toString(),
+      code: (map['kode_kelas'] ?? 'BLK-${jadwal?['id_jadwal'] ?? '2026'}').toString(),
+      category: (pelatihan?['kategori'] ?? map['kategori'] ?? map['kejuruan'] ?? 'Pelatihan Kejuruan').toString(),
+      instructor: (instrukturUser?['name'] ?? instruktur?['nama'] ?? map['instruktur'] ?? map['pengajar'] ?? 'Instruktur BLK').toString(),
+      room: (ruangan?['nama_ruangan'] ?? map['ruangan'] ?? map['room'] ?? 'Workshop BLK').toString(),
+      startDate: (jadwal?['tanggal_mulai'] ?? map['tanggal_mulai'] ?? map['start_date'] ?? '01 September 2026').toString(),
+      endDate: (jadwal?['tanggal_selesai'] ?? map['tanggal_selesai'] ?? map['end_date'] ?? '30 Oktober 2026').toString(),
       totalSessions: total.toInt(),
       completedSessions: completed.toInt(),
       progress: (map['progress'] != null) ? (map['progress'] as num).toDouble() : calcProgress,
       status: (map['status'] ?? 'berlangsung').toString().toLowerCase(),
-      description: (map['deskripsi'] ?? map['description'] ?? 'Pelatihan berbasis kompetensi industri berstandar SKKNI & BNSP.').toString(),
+      description: (pelatihan?['deskripsi_pelatihan'] ?? map['deskripsi'] ?? map['description'] ?? 'Pelatihan berbasis kompetensi industri berstandar SKKNI & BNSP.').toString(),
       materials: materialList,
     );
   }
@@ -101,12 +107,12 @@ class ClassMaterial {
 
   factory ClassMaterial.fromMap(Map<String, dynamic> map) {
     return ClassMaterial(
-      id: (map['id'] ?? '').toString(),
+      id: (map['id'] ?? map['_id'] ?? '').toString(),
       title: (map['judul'] ?? map['title'] ?? 'Materi Pembelajaran').toString(),
       type: (map['tipe'] ?? map['type'] ?? 'pdf').toString(),
       duration: (map['durasi'] ?? map['duration'] ?? '45 Menit').toString(),
       fileUrl: (map['file_url'] ?? map['url'] ?? '').toString(),
-      isCompleted: map['sudah_selesai'] ?? map['is_completed'] ?? false,
+      isCompleted: map['is_completed'] ?? false,
     );
   }
 }

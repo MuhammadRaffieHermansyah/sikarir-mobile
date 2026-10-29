@@ -3,6 +3,7 @@ import 'package:sikarir/features/attendance/attendance.dart';
 import 'package:sikarir/features/auth/auth.dart';
 import 'package:sikarir/features/partner/partner.dart';
 import 'package:sikarir/features/training/training.dart';
+import 'package:sikarir/features/profile/presentation/pages/complete_profile_screen.dart';
 
 class AppRouter {
   static Route<dynamic> onGenerateRoute(RouteSettings settings) {
@@ -19,6 +20,8 @@ class AppRouter {
         return _materialRoute(const TrainingScheduleScreen());
       case '/partners':
         return _materialRoute(const PartnerListScreen());
+      case '/complete-profile':
+        return _materialRoute(const CompleteProfileScreen());
       default:
         return _materialRoute(const LoginScreen());
     }

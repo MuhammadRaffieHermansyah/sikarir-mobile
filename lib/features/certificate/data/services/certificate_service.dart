@@ -22,9 +22,13 @@ class CertificateService {
 
   Future<List<CertificateModel>> getCertificates([String? token]) async {
     try {
+      final endpoint = (token != null && token.isNotEmpty)
+          ? ApiConstants.sertifikatMe
+          : ApiConstants.sertifikasi;
+
       final response = await client
           .get(
-            Uri.parse(ApiConstants.sertifikasi),
+            Uri.parse(endpoint),
             headers: _headers(token),
           )
           .timeout(const Duration(seconds: 4));
@@ -35,7 +39,9 @@ class CertificateService {
             ? decoded
             : (decoded['data'] is List
                 ? decoded['data']
-                : (decoded['sertifikasi'] is List ? decoded['sertifikasi'] : []));
+                : (decoded['sertifikasi'] is List
+                    ? decoded['sertifikasi']
+                    : (decoded['sertifikat'] is List ? decoded['sertifikat'] : [])));
 
         if (list.isNotEmpty) {
           return list.map((e) => CertificateModel.fromMap(e as Map<String, dynamic>)).toList();

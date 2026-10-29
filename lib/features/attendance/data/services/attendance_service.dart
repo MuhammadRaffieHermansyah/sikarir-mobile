@@ -20,6 +20,7 @@ class AttendanceService {
     return headers;
   }
 
+  /// Ambil riwayat presensi peserta (semua)
   Future<List<AttendanceItem>> getAttendanceList([String? token]) async {
     try {
       final response = await client
@@ -27,10 +28,10 @@ class AttendanceService {
             Uri.parse(ApiConstants.absen),
             headers: _headers(token),
           )
-          .timeout(const Duration(seconds: 4));
+          .timeout(const Duration(seconds: 8));
 
       if (kDebugMode) {
-        debugPrint("Get Attendance Response: ${response.statusCode}");
+        debugPrint('Get Attendance Response: ${response.statusCode}');
       }
 
       if (response.statusCode == 200) {
@@ -42,19 +43,18 @@ class AttendanceService {
                 : (decoded['absen'] is List ? decoded['absen'] : []));
 
         if (list.isNotEmpty) {
-          return list.map((e) => AttendanceItem.fromMap(e as Map<String, dynamic>)).toList();
+          return list
+              .map((e) => AttendanceItem.fromMap(e as Map<String, dynamic>))
+              .toList();
         }
       }
     } catch (e) {
-      if (kDebugMode) {
-        debugPrint("Attendance API offline/fallback: $e");
-      }
+      if (kDebugMode) debugPrint('Attendance API error: $e');
     }
-
-    // Return realistic fallback attendance history for participant
-    return _getFallbackAttendance();
+    return [];
   }
 
+  /// Ambil presensi hari ini untuk peserta yang login
   Future<AttendanceItem?> getTodayAttendance([String? token]) async {
     try {
       final response = await client
@@ -62,97 +62,84 @@ class AttendanceService {
             Uri.parse('${ApiConstants.absen}/today'),
             headers: _headers(token),
           )
-          .timeout(const Duration(seconds: 4));
+          .timeout(const Duration(seconds: 8));
+
+      if (kDebugMode) {
+        debugPrint('Today Attendance Response: ${response.statusCode} ${response.body}');
+      }
 
       if (response.statusCode == 200) {
         final decoded = json.decode(response.body);
         final data = decoded['data'] ?? decoded;
-        if (data is Map<String, dynamic>) {
+        if (data is Map<String, dynamic> && data.containsKey('id_absen')) {
           return AttendanceItem.fromMap(data);
         }
       }
-    } catch (_) {}
-
+    } catch (e) {
+      if (kDebugMode) debugPrint('Today Attendance error: $e');
+    }
     return null;
   }
 
+  /// Ambil ringkasan rekapitulasi kehadiran dan status kelayakan sertifikasi
+  Future<Map<String, dynamic>?> getAttendanceSummaryReport([String? token]) async {
+    try {
+      final response = await client
+          .get(
+            Uri.parse('${ApiConstants.absen}/rekap'),
+            headers: _headers(token),
+          )
+          .timeout(const Duration(seconds: 8));
+
+      if (response.statusCode == 200) {
+        final decoded = json.decode(response.body);
+        if (decoded is Map<String, dynamic> && decoded.containsKey('data')) {
+          return decoded['data'] as Map<String, dynamic>;
+        }
+      }
+    } catch (e) {
+      if (kDebugMode) debugPrint('Attendance Rekap API error: $e');
+    }
+    return null;
+  }
+
+  /// Submit presensi baru (dengan koordinat GPS)
   Future<AttendanceItem> submitAttendance(
     AttendanceSubmitRequest request, [
     String? token,
   ]) async {
-    try {
-      final response = await client
-          .post(
-            Uri.parse(ApiConstants.absen),
-            headers: _headers(token),
-            body: json.encode(request.toMap()),
-          )
-          .timeout(const Duration(seconds: 5));
+    final body = json.encode(request.toMap());
 
-      if (response.statusCode == 200 || response.statusCode == 201) {
-        final decoded = json.decode(response.body);
-        final data = decoded['data'] ?? decoded;
-        return AttendanceItem.fromMap(data is Map<String, dynamic> ? data : request.toMap());
-      } else {
-        final decoded = json.decode(response.body);
-        final msg = decoded['message'] ?? 'Gagal melakukan presensi';
-        throw Exception(msg);
-      }
-    } catch (e) {
-      if (e is Exception && !e.toString().contains('ClientException') && !e.toString().contains('TimeoutException')) {
-        rethrow;
-      }
-      // Local successful simulation if server unreachable
-      return AttendanceItem(
-        id: DateTime.now().millisecondsSinceEpoch.toString(),
-        userId: '1',
-        classId: request.classId,
-        className: 'Desain Grafis & UI/UX',
-        date: _formatDate(DateTime.now()),
-        clockInTime: _formatTime(DateTime.now()),
-        status: request.status,
-        notes: request.notes ?? 'Presensi Mandiri Peserta (QR / Tatap Muka)',
-        location: request.location ?? 'BLK Jember - Lab Komputer 02',
-        roomName: 'Lab Komputer 02',
+    if (kDebugMode) {
+      debugPrint('Submit Attendance Body: $body');
+    }
+
+    final response = await client
+        .post(
+          Uri.parse(ApiConstants.absen),
+          headers: _headers(token),
+          body: body,
+        )
+        .timeout(const Duration(seconds: 10));
+
+    if (kDebugMode) {
+      debugPrint('Submit Attendance Response: ${response.statusCode} ${response.body}');
+    }
+
+    if (response.statusCode == 200 || response.statusCode == 201) {
+      final decoded = json.decode(response.body);
+      final data = decoded['data'] ?? decoded;
+      return AttendanceItem.fromMap(
+        data is Map<String, dynamic> ? data : request.toMap(),
       );
+    } else {
+      final decoded = json.decode(response.body);
+      final msg = decoded['message'] ?? 'Gagal melakukan presensi';
+      throw Exception(msg);
     }
   }
 
-  Future<AttendanceItem> submitClockOut(
-    String attendanceId, [
-    String? token,
-  ]) async {
-    try {
-      final response = await client
-          .post(
-            Uri.parse('${ApiConstants.absen}/$attendanceId/clock-out'),
-            headers: _headers(token),
-          )
-          .timeout(const Duration(seconds: 5));
-
-      if (response.statusCode == 200) {
-        final decoded = json.decode(response.body);
-        final data = decoded['data'] ?? decoded;
-        return AttendanceItem.fromMap(data is Map<String, dynamic> ? data : {});
-      }
-    } catch (_) {}
-
-    return AttendanceItem(
-      id: attendanceId,
-      userId: '1',
-      classId: '1',
-      className: 'Desain Grafis & UI/UX',
-      date: _formatDate(DateTime.now()),
-      clockInTime: '07:55 WIB',
-      clockOutTime: _formatTime(DateTime.now()),
-      status: 'hadir',
-      notes: 'Presensi Selesai Kelas',
-      location: 'BLK Jember',
-      roomName: 'Lab Komputer 02',
-    );
-  }
-
-  String _formatDate(DateTime dt) {
+  String formatDate(DateTime dt) {
     const months = [
       'Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni',
       'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'
@@ -160,92 +147,13 @@ class AttendanceService {
     return '${dt.day} ${months[dt.month - 1]} ${dt.year}';
   }
 
-  String _formatTime(DateTime dt) {
+  String formatTime(DateTime dt) {
     final h = dt.hour.toString().padLeft(2, '0');
     final m = dt.minute.toString().padLeft(2, '0');
-    return '$h:$m WIB';
+    return '$h:$m';
   }
 
-  List<AttendanceItem> _getFallbackAttendance() {
-    return [
-      AttendanceItem(
-        id: '101',
-        userId: '1',
-        classId: '1',
-        className: 'Desain Grafis & UI/UX',
-        date: '23 September 2026',
-        clockInTime: '07:54 WIB',
-        clockOutTime: '15:02 WIB',
-        status: 'hadir',
-        notes: 'Hadir tepat waktu di sesi Wireframing & Prototyping',
-        location: 'BLK Jember • Lab Komputer 02',
-        roomName: 'Lab Komputer 02',
-      ),
-      AttendanceItem(
-        id: '102',
-        userId: '1',
-        classId: '1',
-        className: 'Desain Grafis & UI/UX',
-        date: '22 September 2026',
-        clockInTime: '07:58 WIB',
-        clockOutTime: '15:10 WIB',
-        status: 'hadir',
-        notes: 'Sesi Prinsip Dasar Desain & Warna',
-        location: 'BLK Jember • Lab Komputer 02',
-        roomName: 'Lab Komputer 02',
-      ),
-      AttendanceItem(
-        id: '103',
-        userId: '1',
-        classId: '1',
-        className: 'Desain Grafis & UI/UX',
-        date: '21 September 2026',
-        clockInTime: '08:05 WIB',
-        clockOutTime: '15:00 WIB',
-        status: 'hadir',
-        notes: 'Sesi Pengenalan Figma & Design System',
-        location: 'BLK Jember • Lab Komputer 02',
-        roomName: 'Lab Komputer 02',
-      ),
-      AttendanceItem(
-        id: '104',
-        userId: '1',
-        classId: '1',
-        className: 'Desain Grafis & UI/UX',
-        date: '18 September 2026',
-        clockInTime: null,
-        clockOutTime: null,
-        status: 'izin',
-        notes: 'Izin urusan administrasi kependudukan (Surat terlampir)',
-        location: 'Online',
-        roomName: 'Lab Komputer 02',
-      ),
-      AttendanceItem(
-        id: '105',
-        userId: '1',
-        classId: '1',
-        className: 'Desain Grafis & UI/UX',
-        date: '17 September 2026',
-        clockInTime: '07:48 WIB',
-        clockOutTime: '15:05 WIB',
-        status: 'hadir',
-        notes: 'Sesi Praktik Vector Illustration',
-        location: 'BLK Jember • Lab Komputer 02',
-        roomName: 'Lab Komputer 02',
-      ),
-      AttendanceItem(
-        id: '106',
-        userId: '1',
-        classId: '2',
-        className: 'Junior Web Developer',
-        date: '15 September 2026',
-        clockInTime: '08:00 WIB',
-        clockOutTime: '16:00 WIB',
-        status: 'hadir',
-        notes: 'Sesi Fundamental HTML, CSS, JavaScript',
-        location: 'BLK Jember • Lab Pemrograman 01',
-        roomName: 'Lab Pemrograman 01',
-      ),
-    ];
+  String formatTimeHm(DateTime dt) {
+    return '${dt.hour.toString().padLeft(2, '0')}:${dt.minute.toString().padLeft(2, '0')}';
   }
 }

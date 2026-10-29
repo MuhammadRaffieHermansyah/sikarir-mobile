@@ -8,12 +8,15 @@ class JobProvider extends ChangeNotifier {
   JobProvider({JobRepository? repository}) : repository = repository ?? JobRepository();
 
   bool _isLoading = false;
+  bool _isApplying = false;
   List<JobVacancyModel> _jobs = [];
+  List<Map<String, dynamic>> _myApplications = [];
   String _searchQuery = '';
   String _selectedCategory = 'Semua Jurusan';
   String? _errorMessage;
 
   bool get isLoading => _isLoading;
+  bool get isApplying => _isApplying;
   List<JobVacancyModel> get jobs {
     return _jobs.where((job) {
       final matchesSearch = job.title.toLowerCase().contains(_searchQuery.toLowerCase()) ||
@@ -22,7 +25,9 @@ class JobProvider extends ChangeNotifier {
       return matchesSearch;
     }).toList();
   }
+
   List<JobVacancyModel> get allJobs => _jobs;
+  List<Map<String, dynamic>> get myApplications => _myApplications;
   String get searchQuery => _searchQuery;
   String get selectedCategory => _selectedCategory;
   String? get errorMessage => _errorMessage;
@@ -45,6 +50,19 @@ class JobProvider extends ChangeNotifier {
     }
   }
 
+  /// Returns true on success, throws on handled error
+  Future<Map<String, dynamic>> applyJob(String jobId, [String? token]) async {
+    _isApplying = true;
+    notifyListeners();
+    try {
+      final result = await repository.applyJob(jobId, token);
+      return result;
+    } finally {
+      _isApplying = false;
+      notifyListeners();
+    }
+  }
+
   Future<void> fetchJobs([String? token]) async {
     _isLoading = true;
     _errorMessage = null;
@@ -61,9 +79,12 @@ class JobProvider extends ChangeNotifier {
     }
   }
 
-  Future<void> applyJob(String jobId, [String? token]) async {
+  Future<void> fetchMyApplications([String? token]) async {
     try {
-      await repository.applyJob(jobId, token);
-    } catch (_) {}
+      _myApplications = await repository.getMyApplications(token);
+      notifyListeners();
+    } catch (e) {
+      if (kDebugMode) debugPrint('fetchMyApplications error: $e');
+    }
   }
 }

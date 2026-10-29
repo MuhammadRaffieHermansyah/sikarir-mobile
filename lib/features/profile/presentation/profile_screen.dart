@@ -6,18 +6,15 @@ import 'package:sikarir/features/attendance/attendance.dart';
 import 'package:sikarir/features/auth/presentation/providers/auth_provider.dart';
 import 'package:sikarir/features/partner/partner.dart';
 import 'package:sikarir/features/training/training.dart';
-
+import 'package:sikarir/features/profile/presentation/pages/complete_profile_screen.dart';
 class ProfileScreen extends StatelessWidget {
   final VoidCallback? onNotificationTap;
-
   const ProfileScreen({
     super.key,
     this.onNotificationTap,
   });
-
   void _showLogoutDialog(BuildContext context) {
     final authProvider = context.read<AuthProvider>();
-
     showDialog(
       context: context,
       builder: (dialogContext) {
@@ -122,19 +119,16 @@ class ProfileScreen extends StatelessWidget {
       },
     );
   }
-
   @override
   Widget build(BuildContext context) {
     final authProvider = context.watch<AuthProvider>();
     final user = authProvider.user;
-
     final displayName = (user != null && user.name.trim().isNotEmpty)
         ? user.name
         : 'Peserta SIKARIR';
     final displayEmail = (user != null && user.email.trim().isNotEmpty)
         ? user.email
         : 'peserta@kemnaker.go.id';
-
     return Scaffold(
       backgroundColor: AppColors.background,
       body: SafeArea(
@@ -212,18 +206,12 @@ class ProfileScreen extends StatelessWidget {
                     ),
                   ),
                   const SizedBox(height: 16),
-
                   _buildMenuItem(
                     Icons.person_outline,
                     'Data Diri & NIK',
-                    'Kelola informasi pribadi',
+                    'Kelola & lengkapi data diri peserta',
                     onTap: () {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(
-                          content: Text('Informasi data diri terverifikasi SIAPkerja Kemnaker.'),
-                          behavior: SnackBarBehavior.floating,
-                        ),
-                      );
+                      Navigator.push(context, MaterialPageRoute(builder: (_) => const CompleteProfileScreen()));
                     },
                   ),
                   _buildMenuItem(
@@ -271,7 +259,6 @@ class ProfileScreen extends StatelessWidget {
                     'FAQ dan Layanan Kemnaker',
                     onTap: () {},
                   ),
-
                   const SizedBox(height: 16),
                   SizedBox(
                     height: 46,
@@ -304,7 +291,6 @@ class ProfileScreen extends StatelessWidget {
       ),
     );
   }
-
   Widget _buildMenuItem(
     IconData icon,
     String title,

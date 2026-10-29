@@ -5,6 +5,8 @@ import 'package:sikarir/core/widgets/blk_header.dart';
 import 'package:sikarir/features/attendance/attendance.dart';
 import 'package:sikarir/features/auth/auth.dart';
 import 'package:sikarir/features/training/training.dart';
+import 'package:sikarir/features/profile/presentation/pages/complete_profile_screen.dart';
+import 'package:sikarir/features/profile/presentation/providers/peserta_provider.dart';
 
 class HomePage extends StatefulWidget {
   final VoidCallback? onNotificationTap;
@@ -40,7 +42,9 @@ class _HomePageState extends State<HomePage> {
                 padding: const EdgeInsets.symmetric(horizontal: 16),
                 children: [
                   // Greeting row
-                  _buildGreetingSection(),
+_buildGreetingSection(),
+                  const SizedBox(height: 10),
+                  _buildProfileCompletionBanner(),
                   const SizedBox(height: 14),
 
                   // Hero Banner (Bangun skill untuk masa depanmu)
@@ -72,6 +76,98 @@ class _HomePageState extends State<HomePage> {
           ],
         ),
       ),
+    );
+  }
+
+  Widget _buildProfileCompletionBanner() {
+    return Consumer<PesertaProvider>(
+      builder: (context, provider, _) {
+        if (provider.profile == null || provider.isProfileComplete) {
+          return const SizedBox.shrink();
+        }
+
+        return Container(
+          padding: const EdgeInsets.all(14),
+          decoration: BoxDecoration(
+            color: const Color(0xFFFFF7ED),
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: const Color(0xFFFFEDD5)),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.orange.withOpacity(0.04),
+                blurRadius: 8,
+                offset: const Offset(0, 2),
+              ),
+            ],
+          ),
+          child: Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFFFEDD5),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: const Icon(
+                  Icons.assignment_late_rounded,
+                  color: Color(0xFFEA580C),
+                  size: 22,
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: const [
+                    Text(
+                      'Lengkapi Data Diri',
+                      style: TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w800,
+                        color: Color(0xFF9A3412),
+                      ),
+                    ),
+                    SizedBox(height: 2),
+                    Text(
+                      'Wajib dilengkapi sebelum mendaftar pelatihan.',
+                      style: TextStyle(
+                        fontSize: 11,
+                        color: Color(0xFFC2410C),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 8),
+              ElevatedButton(
+                onPressed: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) => const CompleteProfileScreen(),
+                    ),
+                  );
+                },
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFFEA580C),
+                  foregroundColor: Colors.white,
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                  minimumSize: Size.zero,
+                  tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  elevation: 0,
+                ),
+                child: const Text(
+                  'Lengkapi',
+                  style: TextStyle(fontSize: 11.5, fontWeight: FontWeight.bold),
+                ),
+              ),
+            ],
+          ),
+        );
+      },
     );
   }
 

@@ -10,6 +10,7 @@ import 'package:sikarir/features/job/job.dart';
 import 'package:sikarir/features/partner/partner.dart';
 import 'package:sikarir/features/profile/presentation/profile_screen.dart';
 import 'package:sikarir/features/training/training.dart';
+import 'package:sikarir/features/profile/presentation/providers/peserta_provider.dart';
 
 void main() {
   runApp(const SikarirApp());
@@ -29,6 +30,7 @@ class SikarirApp extends StatelessWidget {
         ChangeNotifierProvider(create: (_) => JobProvider()),
         ChangeNotifierProvider(create: (_) => CertificateProvider()),
         ChangeNotifierProvider(create: (_) => PartnerProvider()),
+        ChangeNotifierProvider(create: (_) => PesertaProvider()),
       ],
       builder: (context, child) {
         final authProvider = context.watch<AuthProvider>();
@@ -143,21 +145,23 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
     final screens = [
       HomePage(
         onNotificationTap: _showNotificationModal,
-        onProfileTap: () => _onTabSelected(4),
+        onProfileTap: () => _onTabSelected(5),
         onSwitchTab: _onTabSelected,
       ),
       TrainingCatalogScreen(
         onNotificationTap: _showNotificationModal,
-        onProfileTap: () => _onTabSelected(4),
+        onProfileTap: () => _onTabSelected(5),
       ),
+      // Index 2: Presensi (tab tengah)
+      const AttendanceScreen(),
       JobListScreen(
         onNotificationTap: _showNotificationModal,
-        onProfileTap: () => _onTabSelected(4),
-        onNavigateToCertificate: () => _onTabSelected(3),
+        onProfileTap: () => _onTabSelected(5),
+        onNavigateToCertificate: () => _onTabSelected(4),
       ),
       CertificateScreen(
         onNotificationTap: _showNotificationModal,
-        onProfileTap: () => _onTabSelected(4),
+        onProfileTap: () => _onTabSelected(5),
       ),
       ProfileScreen(onNotificationTap: _showNotificationModal),
     ];
@@ -196,20 +200,27 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
                   Icons.school_rounded,
                   'Pelatihan',
                 ),
+                // Tab Presensi (tengah - index 2)
                 _buildNavItem(
                   2,
+                  Icons.fingerprint_outlined,
+                  Icons.fingerprint_rounded,
+                  'Presensi',
+                ),
+                _buildNavItem(
+                  3,
                   Icons.work_outline_rounded,
                   Icons.work_rounded,
                   'Lowongan',
                 ),
                 _buildNavItem(
-                  3,
+                  4,
                   Icons.verified_outlined,
                   Icons.verified_rounded,
                   'Sertifikat',
                 ),
                 _buildNavItem(
-                  4,
+                  5,
                   Icons.person_outline_rounded,
                   Icons.person_rounded,
                   'Profil',

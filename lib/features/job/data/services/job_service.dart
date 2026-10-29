@@ -50,15 +50,61 @@ class JobService {
     return _getFallbackJobs();
   }
 
-  Future<void> applyJob(String jobId, [String? token]) async {
+  /// Kirim lamaran kerja ke backend.
+  /// Mengembalikan Map dengan `success`, `message`, dan optional `needProfileCompletion`.
+  Future<Map<String, dynamic>> applyJob(String jobId, [String? token]) async {
     try {
-      await client
+      final response = await client
           .post(
             Uri.parse('${ApiConstants.lowongan}/$jobId/lamar'),
             headers: _headers(token),
           )
-          .timeout(const Duration(seconds: 4));
-    } catch (_) {}
+          .timeout(const Duration(seconds: 8));
+
+      final decoded = json.decode(response.body) as Map<String, dynamic>? ?? {};
+      final message = (decoded['message'] ?? '').toString();
+
+      if (response.statusCode == 201) {
+        return {'success': true, 'message': message};
+      } else {
+        final needProfile = decoded['need_profile_completion'] == true;
+        return {
+          'success': false,
+          'message': message.isNotEmpty ? message : 'Gagal mengirim lamaran.',
+          'need_profile_completion': needProfile,
+        };
+      }
+    } catch (e) {
+      if (kDebugMode) {
+        debugPrint("JobService.applyJob error: $e");
+      }
+      return {'success': false, 'message': 'Tidak dapat terhubung ke server.'};
+    }
+  }
+
+  /// Ambil daftar riwayat lamaran peserta yang sedang login.
+  Future<List<Map<String, dynamic>>> getMyApplications([String? token]) async {
+    try {
+      final response = await client
+          .get(
+            Uri.parse('${ApiConstants.lowongan}/my-applications'),
+            headers: _headers(token),
+          )
+          .timeout(const Duration(seconds: 6));
+
+      if (response.statusCode == 200) {
+        final decoded = json.decode(response.body);
+        final List list = decoded is List
+            ? decoded
+            : (decoded['data'] is List ? decoded['data'] : []);
+        return list.cast<Map<String, dynamic>>();
+      }
+    } catch (e) {
+      if (kDebugMode) {
+        debugPrint("JobService.getMyApplications error: $e");
+      }
+    }
+    return [];
   }
 
   List<JobVacancyModel> _getFallbackJobs() {

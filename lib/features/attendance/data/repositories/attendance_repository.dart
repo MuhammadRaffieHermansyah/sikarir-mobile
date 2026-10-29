@@ -15,17 +15,14 @@ class AttendanceRepository {
     return await service.getTodayAttendance(token);
   }
 
+  Future<Map<String, dynamic>?> getAttendanceSummaryReport([String? token]) async {
+    return await service.getAttendanceSummaryReport(token);
+  }
+
   Future<AttendanceItem> submitAttendance(
     AttendanceSubmitRequest request, [
     String? token,
   ]) async {
     return await service.submitAttendance(request, token);
-  }
-
-  Future<AttendanceItem> submitClockOut(
-    String attendanceId, [
-    String? token,
-  ]) async {
-    return await service.submitClockOut(attendanceId, token);
   }
 }

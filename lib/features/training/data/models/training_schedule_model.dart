@@ -36,20 +36,29 @@ class TrainingScheduleModel {
   });
 
   factory TrainingScheduleModel.fromMap(Map<String, dynamic> map) {
+    final pelatihan = map['pelatihan'] as Map<String, dynamic>?;
+    final instruktur = map['instruktur'] as Map<String, dynamic>?;
+    final instrukturUser = instruktur?['user'] as Map<String, dynamic>?;
+    final ruangan = map['ruangan_workshop'] as Map<String, dynamic>?;
+
+    final namaKelas = pelatihan?['nama_pelatihan'] ?? map['nama_kelas'] ?? map['class_name'] ?? 'Pelatihan BLK';
+    final namaInstruktur = instrukturUser?['name'] ?? instruktur?['nama'] ?? map['instruktur'] ?? map['instructor'] ?? 'Instruktur BLK';
+    final namaRuangan = ruangan?['nama_ruangan'] ?? map['tempat'] ?? map['ruangan'] ?? map['room'] ?? 'Workshop BLK';
+
     return TrainingScheduleModel(
-      id: (map['id'] ?? map['_id'] ?? '').toString(),
-      classId: (map['kelas_pelatihan_id'] ?? map['class_id'] ?? '1').toString(),
-      className: (map['nama_kelas'] ?? map['class_name'] ?? 'Desain Grafis & UI/UX').toString(),
+      id: (map['id_jadwal'] ?? map['id'] ?? map['_id'] ?? '').toString(),
+      classId: (map['id_pelatihan'] ?? map['kelas_pelatihan_id'] ?? map['class_id'] ?? '1').toString(),
+      className: namaKelas.toString(),
       sessionNumber: (map['sesi_ke'] ?? map['session_number'] ?? 1) as int,
-      title: (map['judul_sesi'] ?? map['title'] ?? 'Sesi Pembelajaran').toString(),
-      topic: (map['topik'] ?? map['topic'] ?? 'Pembahasan Modul Praktik').toString(),
-      date: (map['tanggal'] ?? map['date'] ?? 'Hari Ini').toString(),
+      title: (map['judul_sesi'] ?? namaKelas ?? 'Sesi Pembelajaran').toString(),
+      topic: (pelatihan?['deskripsi_pelatihan'] ?? map['topik'] ?? map['topic'] ?? 'Pelatihan berbasis kompetensi SKKNI').toString(),
+      date: (map['tanggal_mulai'] ?? map['tanggal'] ?? map['date'] ?? 'Hari Ini').toString(),
       startTime: (map['jam_mulai'] ?? map['start_time'] ?? '08:00').toString(),
       endTime: (map['jam_selesai'] ?? map['end_time'] ?? '15:00').toString(),
-      room: (map['ruangan'] ?? map['room'] ?? 'Lab Komputer 02').toString(),
-      instructor: (map['instruktur'] ?? map['instructor'] ?? 'Ahmad Fauzi, S.Kom.').toString(),
+      room: namaRuangan.toString(),
+      instructor: namaInstruktur.toString(),
       type: (map['jenis'] ?? map['type'] ?? 'tatap_muka').toString().toLowerCase(),
-      status: (map['status'] ?? 'akan_datang').toString().toLowerCase(),
+      status: (map['status'] ?? 'berlangsung').toString().toLowerCase(),
       meetUrl: map['meet_url']?.toString(),
       isAttendanceOpen: map['absen_dibuka'] ?? map['is_attendance_open'] ?? true,
       myAttendanceStatus: map['status_kehadiran']?.toString(),
