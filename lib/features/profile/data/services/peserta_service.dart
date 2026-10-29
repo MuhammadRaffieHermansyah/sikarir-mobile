@@ -1,6 +1,8 @@
 import 'dart:convert';
+import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
+import 'package:http_parser/http_parser.dart';
 import 'package:sikarir/core/constants/api_constants.dart';
 import 'package:sikarir/features/profile/data/models/peserta_profile_model.dart';
 
@@ -13,6 +15,16 @@ class PesertaService {
     final headers = <String, String>{
       'Accept': 'application/json',
       'Content-Type': 'application/json',
+    };
+    if (token != null && token.isNotEmpty) {
+      headers['Authorization'] = 'Bearer $token';
+    }
+    return headers;
+  }
+
+  Map<String, String> _headersMultipart([String? token]) {
+    final headers = <String, String>{
+      'Accept': 'application/json',
     };
     if (token != null && token.isNotEmpty) {
       headers['Authorization'] = 'Bearer $token';
@@ -46,11 +58,56 @@ class PesertaService {
     return null;
   }
 
-  /// Update / lengkapi data diri peserta
+  /// Update / lengkapi data diri peserta (support upload pas_foto)
   Future<PesertaProfile> updateMyProfile(
     Map<String, dynamic> body, [
     String? token,
+    File? pasFotoFile,
   ]) async {
+    // Jika ada file foto, gunakan multipart request
+    if (pasFotoFile != null) {
+      final uri = Uri.parse(ApiConstants.pesertaMe);
+      final request = http.MultipartRequest('POST', uri);
+      request.headers.addAll(_headersMultipart(token));
+
+      // Tambahkan semua field teks
+      body.forEach((key, value) {
+        if (value != null) {
+          request.fields[key] = value.toString();
+        }
+      });
+
+      // Tambahkan file foto
+      final ext = pasFotoFile.path.split('.').last.toLowerCase();
+      final mimeType = ext == 'png' ? 'image/png' : 'image/jpeg';
+      request.files.add(await http.MultipartFile.fromPath(
+        'pas_foto',
+        pasFotoFile.path,
+        contentType: MediaType.parse(mimeType),
+      ));
+
+      if (kDebugMode) debugPrint("Upload Pas Foto: ${pasFotoFile.path}");
+
+      final streamed = await request.send().timeout(const Duration(seconds: 30));
+      final response = await http.Response.fromStream(streamed);
+
+      if (kDebugMode) {
+        debugPrint("Update Peserta (multipart) Status: ${response.statusCode}");
+        debugPrint("Update Peserta (multipart) Body: ${response.body}");
+      }
+
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        final decoded = json.decode(response.body);
+        final data = decoded['data'] ?? decoded;
+        return PesertaProfile.fromMap(data);
+      } else {
+        final decoded = json.decode(response.body);
+        final msg = decoded['message'] ?? 'Gagal memperbarui data diri.';
+        throw Exception(msg);
+      }
+    }
+
+    // Tanpa foto: request JSON biasa
     final response = await client
         .post(
           Uri.parse(ApiConstants.pesertaMe),
@@ -106,4 +163,3 @@ class PesertaService {
     }
   }
 }
-

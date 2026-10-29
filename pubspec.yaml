@@ -13,6 +13,8 @@ dependencies:
   provider: ^6.0.0
   geolocator: ^13.0.1         # GPS & lokasi
   permission_handler: ^11.3.0  # Izin runtime Android/iOS
+  image_picker: ^1.1.2         # Pilih foto dari galeri / kamera
+  http_parser: ^4.0.2          # MIME type untuk multipart upload
 
 dev_dependencies:
   flutter_test:

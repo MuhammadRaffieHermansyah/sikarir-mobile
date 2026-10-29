@@ -1,3 +1,4 @@
+import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:sikarir/features/profile/data/models/peserta_profile_model.dart';
 import 'package:sikarir/features/profile/data/services/peserta_service.dart';
@@ -34,13 +35,17 @@ class PesertaProvider extends ChangeNotifier {
     }
   }
 
-  Future<bool> updateProfile(Map<String, dynamic> data, [String? token]) async {
+  Future<bool> updateProfile(
+    Map<String, dynamic> data, [
+    String? token,
+    File? pasFotoFile,
+  ]) async {
     _isLoading = true;
     _errorMessage = null;
     notifyListeners();
 
     try {
-      final updated = await service.updateMyProfile(data, token);
+      final updated = await service.updateMyProfile(data, token, pasFotoFile);
       _profile = updated;
       return true;
     } catch (e) {
@@ -76,4 +81,3 @@ class PesertaProvider extends ChangeNotifier {
     }
   }
 }
-

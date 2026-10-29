@@ -10,8 +10,11 @@ class PesertaProfile {
   final String? alamatLengkap;
   final String? pendidikanTerakhir;
   final String? pendidikanSekarang;
+  final String? statusPendidikan; // sudah_lulus | masih_menempuh
   final String? jurusan;
-  final String? pasFoto;
+  final String? pasFoto;          // URL foto dari server
+  final bool isDisabilitas;
+  final String? jenisDisabilitas;
   final bool isProfileComplete;
 
   PesertaProfile({
@@ -26,8 +29,11 @@ class PesertaProfile {
     this.alamatLengkap,
     this.pendidikanTerakhir,
     this.pendidikanSekarang,
+    this.statusPendidikan,
     this.jurusan,
     this.pasFoto,
+    this.isDisabilitas = false,
+    this.jenisDisabilitas,
     this.isProfileComplete = false,
   });
 
@@ -45,8 +51,12 @@ class PesertaProfile {
       alamatLengkap: data['alamat_lengkap']?.toString(),
       pendidikanTerakhir: data['pendidikan_terakhir']?.toString(),
       pendidikanSekarang: data['pendidikan_sekarang']?.toString(),
+      statusPendidikan: data['status_pendidikan']?.toString(),
       jurusan: data['jurusan']?.toString(),
       pasFoto: data['pas_foto']?.toString(),
+      isDisabilitas: data['is_disabilitas'] == true ||
+          data['is_disabilitas'].toString() == '1',
+      jenisDisabilitas: data['jenis_disabilitas']?.toString(),
       isProfileComplete: data['is_profile_complete'] == true ||
           (data['nomor_wa'] != null &&
               data['nomor_wa'].toString().isNotEmpty &&
@@ -67,8 +77,10 @@ class PesertaProfile {
       'alamat_lengkap': alamatLengkap,
       'pendidikan_terakhir': pendidikanTerakhir,
       if (pendidikanSekarang != null) 'pendidikan_sekarang': pendidikanSekarang,
+      if (statusPendidikan != null) 'status_pendidikan': statusPendidikan,
       if (jurusan != null) 'jurusan': jurusan,
+      'is_disabilitas': isDisabilitas,
+      if (jenisDisabilitas != null) 'jenis_disabilitas': jenisDisabilitas,
     };
   }
 }
-
