@@ -7,6 +7,7 @@ import 'package:sikarir/features/attendance/data/services/attendance_service.dar
 import 'package:sikarir/features/attendance/data/services/location_service.dart';
 import 'package:sikarir/features/attendance/presentation/providers/attendance_provider.dart';
 import 'package:sikarir/features/auth/presentation/providers/auth_provider.dart';
+import 'package:sikarir/features/profile/presentation/providers/peserta_provider.dart';
 
 class AttendanceScreen extends StatefulWidget {
   const AttendanceScreen({super.key});
@@ -33,6 +34,7 @@ class _AttendanceScreenState extends State<AttendanceScreen>
     WidgetsBinding.instance.addPostFrameCallback((_) {
       final token = context.read<AuthProvider>().user?.token;
       context.read<AttendanceProvider>().fetchAttendanceData(token);
+      context.read<PesertaProvider>().fetchProfile(token);
     });
   }
 
@@ -66,7 +68,8 @@ class _AttendanceScreenState extends State<AttendanceScreen>
     final provider = ctx.read<AttendanceProvider>();
     final authProvider = ctx.read<AuthProvider>();
     final token = authProvider.user?.token;
-    final pesertaId = authProvider.user?.userId ?? '';
+    final pesertaProvider = ctx.read<PesertaProvider>();
+    final pesertaId = (pesertaProvider.profile?.idPeserta.isNotEmpty == true) ? pesertaProvider.profile!.idPeserta : (authProvider.user?.userId ?? '');
 
     // Tampilkan bottom sheet proses cek lokasi
     if (!mounted) return;
@@ -92,7 +95,8 @@ class _AttendanceScreenState extends State<AttendanceScreen>
     final provider = ctx.read<AttendanceProvider>();
     final authProvider = ctx.read<AuthProvider>();
     final token = authProvider.user?.token;
-    final pesertaId = authProvider.user?.userId ?? '';
+    final pesertaProvider = ctx.read<PesertaProvider>();
+    final pesertaId = (pesertaProvider.profile?.idPeserta.isNotEmpty == true) ? pesertaProvider.profile!.idPeserta : (authProvider.user?.userId ?? '');
 
     await showModalBottomSheet(
       context: ctx,

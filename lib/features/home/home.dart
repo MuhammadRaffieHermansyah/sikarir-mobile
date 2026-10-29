@@ -26,6 +26,18 @@ class HomePage extends StatefulWidget {
 
 class _HomePageState extends State<HomePage> {
   @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final token = context.read<AuthProvider>().user?.token;
+      if (token != null && token.isNotEmpty) {
+        context.read<PesertaProvider>().fetchProfile(token);
+        context.read<AttendanceProvider>().fetchAttendanceData(token);
+      }
+    });
+  }
+
+  @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppColors.background,
