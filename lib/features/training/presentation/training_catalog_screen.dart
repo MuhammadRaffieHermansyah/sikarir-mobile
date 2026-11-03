@@ -18,16 +18,7 @@ class TrainingCatalogScreen extends StatefulWidget {
 }
 
 class _TrainingCatalogScreenState extends State<TrainingCatalogScreen> {
-  int _selectedCategoryIndex = 0;
   final TextEditingController _searchController = TextEditingController();
-
-  final List<String> _categories = [
-    'Semua (48)',
-    'Teknologi & IT',
-    'Desain Grafis',
-    'Manufaktur & Las',
-    'Otomotif Modern',
-  ];
 
   final List<Map<String, dynamic>> _trainings = [
     {
@@ -224,46 +215,6 @@ class _TrainingCatalogScreenState extends State<TrainingCatalogScreen> {
                         ),
                       ),
                     ],
-                  ),
-                  const SizedBox(height: 14),
-
-                  // Category Filter Chips
-                  SizedBox(
-                    height: 34,
-                    child: ListView.separated(
-                      scrollDirection: Axis.horizontal,
-                      itemCount: _categories.length,
-                      separatorBuilder: (context, index) => const SizedBox(width: 8),
-                      itemBuilder: (context, index) {
-                        final isSelected = index == _selectedCategoryIndex;
-                        return GestureDetector(
-                          onTap: () {
-                            setState(() {
-                              _selectedCategoryIndex = index;
-                            });
-                          },
-                          child: Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 14),
-                            alignment: Alignment.center,
-                            decoration: BoxDecoration(
-                              color: isSelected ? AppColors.primary : Colors.white,
-                              borderRadius: BorderRadius.circular(20),
-                              border: Border.all(
-                                color: isSelected ? AppColors.primary : AppColors.cardBorder,
-                              ),
-                            ),
-                            child: Text(
-                              _categories[index],
-                              style: TextStyle(
-                                fontSize: 12,
-                                fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
-                                color: isSelected ? Colors.white : AppColors.textPrimary,
-                              ),
-                            ),
-                          ),
-                        );
-                      },
-                    ),
                   ),
                   const SizedBox(height: 14),
 
