@@ -8,6 +8,8 @@ import 'package:sikarir/features/attendance/data/services/location_service.dart'
 import 'package:sikarir/features/attendance/presentation/providers/attendance_provider.dart';
 import 'package:sikarir/features/auth/presentation/providers/auth_provider.dart';
 import 'package:sikarir/features/profile/presentation/providers/peserta_provider.dart';
+import 'package:sikarir/features/training/presentation/providers/training_class_provider.dart';
+
 
 class AttendanceScreen extends StatefulWidget {
   const AttendanceScreen({super.key});
@@ -35,6 +37,7 @@ class _AttendanceScreenState extends State<AttendanceScreen>
       final token = context.read<AuthProvider>().user?.token;
       context.read<AttendanceProvider>().fetchAttendanceData(token);
       context.read<PesertaProvider>().fetchProfile(token);
+      context.read<TrainingClassProvider>().fetchClasses(token);
     });
   }
 
@@ -526,7 +529,7 @@ class _AttendanceScreenState extends State<AttendanceScreen>
                               : 'Syarat minimal kehadiran adalah 80% untuk dapat mengikuti ujian sertifikasi.',
                           style: TextStyle(
                             fontSize: 11,
-                            color: isMemenuhi ? AppColors.mintDark.withOpacity(0.8) : const Color(0xFFC2410C),
+                            color: isMemenuhi ? AppColors.mintDark.withValues(alpha: 0.8) : const Color(0xFFC2410C),
                           ),
                         ),
                       ],

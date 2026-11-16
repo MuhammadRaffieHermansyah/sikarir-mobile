@@ -15,6 +15,7 @@ dependencies:
   permission_handler: ^11.3.0  # Izin runtime Android/iOS
   image_picker: ^1.1.2         # Pilih foto dari galeri / kamera
   http_parser: ^4.0.2          # MIME type untuk multipart upload
+  shared_preferences: ^2.2.2
 
 dev_dependencies:
   flutter_test:
