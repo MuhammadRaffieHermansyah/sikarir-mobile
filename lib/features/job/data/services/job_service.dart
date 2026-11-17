@@ -4,6 +4,14 @@ import 'package:http/http.dart' as http;
 import 'package:sikarir/core/constants/api_constants.dart';
 import 'package:sikarir/features/job/data/models/job_model.dart';
 
+/// Exception khusus saat API tidak dapat dijangkau (fallback ke data lokal)
+class JobApiException implements Exception {
+  final String message;
+  const JobApiException(this.message);
+  @override
+  String toString() => message;
+}
+
 class JobService {
   final http.Client client;
 
@@ -20,6 +28,11 @@ class JobService {
     return headers;
   }
 
+  /// Mengambil daftar lowongan dari API.
+  /// - Jika API berhasil (200) dan mengembalikan data → return list dari API.
+  /// - Jika API gagal / timeout / response kosong → throw [JobApiException]
+  ///   sehingga caller (repository/provider) bisa handle (misal tampilkan error
+  ///   atau pakai fallback lokal sesuai kebutuhan).
   Future<List<JobVacancyModel>> getJobs([String? token]) async {
     try {
       final response = await client
@@ -27,7 +40,7 @@ class JobService {
             Uri.parse(ApiConstants.lowongan),
             headers: _headers(token),
           )
-          .timeout(const Duration(seconds: 4));
+          .timeout(const Duration(seconds: 10));
 
       if (response.statusCode == 200) {
         final decoded = json.decode(response.body);
@@ -38,17 +51,36 @@ class JobService {
                 : (decoded['lowongan'] is List ? decoded['lowongan'] : []));
 
         if (list.isNotEmpty) {
-          return list.map((e) => JobVacancyModel.fromMap(e as Map<String, dynamic>)).toList();
+          if (kDebugMode) {
+            debugPrint('JobService: Berhasil ambil ${list.length} lowongan dari API.');
+          }
+          return list
+              .map((e) => JobVacancyModel.fromMap(e as Map<String, dynamic>))
+              .toList();
         }
+
+        // Response 200 tapi data kosong → kembalikan list kosong (bukan fallback)
+        return [];
       }
+
+      // Status code bukan 200
+      throw JobApiException(
+        'Gagal memuat lowongan (HTTP ${response.statusCode}). Silakan coba lagi.',
+      );
+    } on JobApiException {
+      rethrow;
     } catch (e) {
       if (kDebugMode) {
-        debugPrint("JobService API fallback: $e");
+        debugPrint('JobService.getJobs error: $e');
       }
+      throw const JobApiException(
+        'Tidak dapat terhubung ke server. Periksa koneksi internet Anda.',
+      );
     }
-
-    return _getFallbackJobs();
   }
+
+  /// Mengembalikan data contoh (offline / demo) tanpa menyentuh API.
+  List<JobVacancyModel> getFallbackJobs() => _getFallbackJobs();
 
   /// Kirim lamaran kerja ke backend.
   /// Mengembalikan Map dengan `success`, `message`, dan optional `needProfileCompletion`.

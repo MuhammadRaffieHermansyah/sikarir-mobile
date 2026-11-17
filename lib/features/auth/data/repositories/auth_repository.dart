@@ -14,6 +14,7 @@ class AuthRepository {
 
   Future<LoginResponse> login(LoginRequest loginRequest) async {
     final response = await authService.login(loginRequest);
+    print(response);
     await localService.saveUserSession(response);
     return response;
   }

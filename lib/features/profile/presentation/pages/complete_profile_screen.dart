@@ -1,4 +1,5 @@
 import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:permission_handler/permission_handler.dart';
@@ -69,8 +70,9 @@ class _CompleteProfileScreenState extends State<CompleteProfileScreen> {
         _alamatController.text = profile.alamatLengkap ?? '';
         _jurusanController.text = profile.jurusan ?? '';
         _jenisDisabilitasController.text = profile.jenisDisabilitas ?? '';
-        _jenisKelamin =
-            (profile.jenisKelamin.isNotEmpty) ? profile.jenisKelamin : 'Laki-laki';
+        _jenisKelamin = (profile.jenisKelamin.isNotEmpty)
+            ? profile.jenisKelamin
+            : 'Laki-laki';
         if (profile.pendidikanTerakhir != null &&
             profile.pendidikanTerakhir!.isNotEmpty) {
           if (_listPendidikan.contains(profile.pendidikanTerakhir)) {
@@ -140,7 +142,8 @@ class _CompleteProfileScreenState extends State<CompleteProfileScreen> {
             ScaffoldMessenger.of(context).showSnackBar(
               SnackBar(
                 content: const Text(
-                    'Izin kamera dinonaktifkan. Silakan aktifkan di Pengaturan.'),
+                  'Izin kamera dinonaktifkan. Silakan aktifkan di Pengaturan.',
+                ),
                 action: SnackBarAction(
                   label: 'Pengaturan',
                   textColor: Colors.white,
@@ -222,10 +225,15 @@ class _CompleteProfileScreenState extends State<CompleteProfileScreen> {
                     color: AppColors.mintBg,
                     borderRadius: BorderRadius.circular(10),
                   ),
-                  child: const Icon(Icons.camera_alt_rounded, color: AppColors.primary),
+                  child: const Icon(
+                    Icons.camera_alt_rounded,
+                    color: AppColors.primary,
+                  ),
                 ),
-                title: const Text('Ambil dari Kamera',
-                    style: TextStyle(fontWeight: FontWeight.w600)),
+                title: const Text(
+                  'Ambil dari Kamera',
+                  style: TextStyle(fontWeight: FontWeight.w600),
+                ),
                 onTap: () {
                   Navigator.pop(ctx);
                   _pickPasFoto(ImageSource.camera);
@@ -238,10 +246,15 @@ class _CompleteProfileScreenState extends State<CompleteProfileScreen> {
                     color: AppColors.mintBg,
                     borderRadius: BorderRadius.circular(10),
                   ),
-                  child: const Icon(Icons.photo_library_rounded, color: AppColors.primary),
+                  child: const Icon(
+                    Icons.photo_library_rounded,
+                    color: AppColors.primary,
+                  ),
                 ),
-                title: const Text('Pilih dari Galeri',
-                    style: TextStyle(fontWeight: FontWeight.w600)),
+                title: const Text(
+                  'Pilih dari Galeri',
+                  style: TextStyle(fontWeight: FontWeight.w600),
+                ),
                 onTap: () {
                   Navigator.pop(ctx);
                   _pickPasFoto(ImageSource.gallery);
@@ -330,7 +343,9 @@ class _CompleteProfileScreenState extends State<CompleteProfileScreen> {
             ),
             backgroundColor: AppColors.primaryDark,
             behavior: SnackBarBehavior.floating,
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12),
+            ),
           ),
         );
 
@@ -363,8 +378,11 @@ class _CompleteProfileScreenState extends State<CompleteProfileScreen> {
         backgroundColor: Colors.white,
         elevation: 0,
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back_ios_new_rounded,
-              color: AppColors.textPrimary, size: 20),
+          icon: const Icon(
+            Icons.arrow_back_ios_new_rounded,
+            color: AppColors.textPrimary,
+            size: 20,
+          ),
           onPressed: () => Navigator.pop(context),
         ),
         title: const Text(
@@ -448,8 +466,10 @@ class _CompleteProfileScreenState extends State<CompleteProfileScreen> {
                       profile!.nomorPeserta.isNotEmpty)
                     Container(
                       margin: const EdgeInsets.only(bottom: 16),
-                      padding:
-                          const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 14,
+                        vertical: 10,
+                      ),
                       decoration: BoxDecoration(
                         color: Colors.white,
                         borderRadius: BorderRadius.circular(12),
@@ -457,12 +477,19 @@ class _CompleteProfileScreenState extends State<CompleteProfileScreen> {
                       ),
                       child: Row(
                         children: [
-                          const Icon(Icons.badge_outlined,
-                              size: 18, color: AppColors.textSecondary),
+                          const Icon(
+                            Icons.badge_outlined,
+                            size: 18,
+                            color: AppColors.textSecondary,
+                          ),
                           const SizedBox(width: 8),
-                          const Text('No. Peserta: ',
-                              style: TextStyle(
-                                  fontSize: 12, color: AppColors.textSecondary)),
+                          const Text(
+                            'No. Peserta: ',
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: AppColors.textSecondary,
+                            ),
+                          ),
                           Text(
                             profile.nomorPeserta,
                             style: const TextStyle(
@@ -487,12 +514,17 @@ class _CompleteProfileScreenState extends State<CompleteProfileScreen> {
                       Row(
                         children: [
                           Expanded(
-                            child: _buildGenderChoice('Laki-laki', Icons.male_rounded),
+                            child: _buildGenderChoice(
+                              'Laki-laki',
+                              Icons.male_rounded,
+                            ),
                           ),
                           const SizedBox(width: 12),
                           Expanded(
-                            child:
-                                _buildGenderChoice('Perempuan', Icons.female_rounded),
+                            child: _buildGenderChoice(
+                              'Perempuan',
+                              Icons.female_rounded,
+                            ),
                           ),
                         ],
                       ),
@@ -557,8 +589,8 @@ class _CompleteProfileScreenState extends State<CompleteProfileScreen> {
                                   ),
                                   validator: (v) =>
                                       (v == null || v.trim().isEmpty)
-                                          ? 'Wajib diisi'
-                                          : null,
+                                      ? 'Wajib diisi'
+                                      : null,
                                 ),
                               ],
                             ),
@@ -573,18 +605,23 @@ class _CompleteProfileScreenState extends State<CompleteProfileScreen> {
                                   onTap: _selectDate,
                                   child: Container(
                                     height: 48,
-                                    padding:
-                                        const EdgeInsets.symmetric(horizontal: 12),
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 12,
+                                    ),
                                     decoration: BoxDecoration(
                                       color: const Color(0xFFF9FBF9),
                                       borderRadius: BorderRadius.circular(12),
-                                      border:
-                                          Border.all(color: Colors.grey.shade300),
+                                      border: Border.all(
+                                        color: Colors.grey.shade300,
+                                      ),
                                     ),
                                     child: Row(
                                       children: [
-                                        const Icon(Icons.calendar_month_rounded,
-                                            size: 18, color: AppColors.primary),
+                                        const Icon(
+                                          Icons.calendar_month_rounded,
+                                          size: 18,
+                                          color: AppColors.primary,
+                                        ),
                                         const SizedBox(width: 8),
                                         Expanded(
                                           child: Text(
@@ -617,8 +654,7 @@ class _CompleteProfileScreenState extends State<CompleteProfileScreen> {
                         controller: _alamatController,
                         maxLines: 3,
                         decoration: _inputDecoration(
-                          hint:
-                              'Masukkan alamat lengkap beserta RT/RW, Kelurahan, Kecamatan, Kota.',
+                          hint: 'Masukkan alamat lengkap beserta RT/RW, Kelurahan, Kecamatan, Kota.',
                           prefixIcon: Icons.home_rounded,
                         ),
                         validator: (v) {
@@ -646,8 +682,10 @@ class _CompleteProfileScreenState extends State<CompleteProfileScreen> {
                       // Pendidikan Terakhir
                       _buildLabel('Pendidikan Terakhir *'),
                       Container(
-                        padding:
-                            const EdgeInsets.symmetric(horizontal: 14, vertical: 2),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 14,
+                          vertical: 2,
+                        ),
                         decoration: BoxDecoration(
                           color: const Color(0xFFF9FBF9),
                           borderRadius: BorderRadius.circular(12),
@@ -660,11 +698,14 @@ class _CompleteProfileScreenState extends State<CompleteProfileScreen> {
                             items: _listPendidikan.map((p) {
                               return DropdownMenuItem(
                                 value: p,
-                                child: Text(p,
-                                    style: const TextStyle(
-                                        fontSize: 13,
-                                        fontWeight: FontWeight.w600,
-                                        color: AppColors.textPrimary)),
+                                child: Text(
+                                  p,
+                                  style: const TextStyle(
+                                    fontSize: 13,
+                                    fontWeight: FontWeight.w600,
+                                    color: AppColors.textPrimary,
+                                  ),
+                                ),
                               );
                             }).toList(),
                             onChanged: (val) {
@@ -776,9 +817,10 @@ class _CompleteProfileScreenState extends State<CompleteProfileScreen> {
                       const Text(
                         'Unggah pas foto resmi berlatar belakang merah atau biru (format JPG/PNG, maks. 2MB).',
                         style: TextStyle(
-                            fontSize: 12,
-                            color: AppColors.textSecondary,
-                            height: 1.4),
+                          fontSize: 12,
+                          color: AppColors.textSecondary,
+                          height: 1.4,
+                        ),
                       ),
                       const SizedBox(height: 16),
                       Center(
@@ -791,12 +833,14 @@ class _CompleteProfileScreenState extends State<CompleteProfileScreen> {
                               color: const Color(0xFFF9FBF9),
                               borderRadius: BorderRadius.circular(14),
                               border: Border.all(
-                                color: (_pasFotoFile != null ||
+                                color:
+                                    (_pasFotoFile != null ||
                                         (_pasFotoUrl != null &&
                                             _pasFotoUrl!.isNotEmpty))
                                     ? AppColors.primary
                                     : Colors.grey.shade300,
-                                width: (_pasFotoFile != null ||
+                                width:
+                                    (_pasFotoFile != null ||
                                         (_pasFotoUrl != null &&
                                             _pasFotoUrl!.isNotEmpty))
                                     ? 2
@@ -807,14 +851,14 @@ class _CompleteProfileScreenState extends State<CompleteProfileScreen> {
                             child: _pasFotoFile != null
                                 ? Image.file(_pasFotoFile!, fit: BoxFit.cover)
                                 : (_pasFotoUrl != null &&
-                                        _pasFotoUrl!.isNotEmpty)
-                                    ? Image.network(
-                                        _pasFotoUrl!,
-                                        fit: BoxFit.cover,
-                                        errorBuilder: (ctx, e, st) =>
-                                            _buildFotoPlaceholder(),
-                                      )
-                                    : _buildFotoPlaceholder(),
+                                      _pasFotoUrl!.isNotEmpty)
+                                ? Image.network(
+                                    _pasFotoUrl!,
+                                    fit: BoxFit.cover,
+                                    errorBuilder: (ctx, e, st) =>
+                                        _buildFotoPlaceholder(),
+                                  )
+                                : _buildFotoPlaceholder(),
                           ),
                         ),
                       ),
@@ -835,9 +879,12 @@ class _CompleteProfileScreenState extends State<CompleteProfileScreen> {
                             foregroundColor: AppColors.primary,
                             side: const BorderSide(color: AppColors.primary),
                             shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(10)),
+                              borderRadius: BorderRadius.circular(10),
+                            ),
                             padding: const EdgeInsets.symmetric(
-                                horizontal: 20, vertical: 10),
+                              horizontal: 20,
+                              vertical: 10,
+                            ),
                           ),
                         ),
                       ),
@@ -956,9 +1003,11 @@ class _CompleteProfileScreenState extends State<CompleteProfileScreen> {
         child: Row(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(icon,
-                size: 18,
-                color: isSelected ? AppColors.primary : AppColors.textSecondary),
+            Icon(
+              icon,
+              size: 18,
+              color: isSelected ? AppColors.primary : AppColors.textSecondary,
+            ),
             const SizedBox(width: 6),
             Text(
               value,
@@ -994,9 +1043,11 @@ class _CompleteProfileScreenState extends State<CompleteProfileScreen> {
         ),
         child: Column(
           children: [
-            Icon(icon,
-                size: 22,
-                color: isSelected ? AppColors.primary : AppColors.textSecondary),
+            Icon(
+              icon,
+              size: 22,
+              color: isSelected ? AppColors.primary : AppColors.textSecondary,
+            ),
             const SizedBox(height: 5),
             Text(
               label,
@@ -1031,9 +1082,11 @@ class _CompleteProfileScreenState extends State<CompleteProfileScreen> {
       child: Row(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Icon(icon,
-              size: 18,
-              color: isSelected ? AppColors.primary : AppColors.textSecondary),
+          Icon(
+            icon,
+            size: 18,
+            color: isSelected ? AppColors.primary : AppColors.textSecondary,
+          ),
           const SizedBox(width: 6),
           Text(
             label,
@@ -1077,8 +1130,7 @@ class _CompleteProfileScreenState extends State<CompleteProfileScreen> {
       prefixIcon: Icon(prefixIcon, size: 18, color: AppColors.primary),
       filled: true,
       fillColor: const Color(0xFFF9FBF9),
-      contentPadding:
-          const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+      contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
       border: OutlineInputBorder(
         borderRadius: BorderRadius.circular(12),
         borderSide: BorderSide(color: Colors.grey.shade300),
