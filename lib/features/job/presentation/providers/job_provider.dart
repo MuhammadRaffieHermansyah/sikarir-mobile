@@ -9,6 +9,7 @@ class JobProvider extends ChangeNotifier {
 
   bool _isLoading = false;
   bool _isApplying = false;
+  bool _isOffline = false;
   List<JobVacancyModel> _jobs = [];
   List<Map<String, dynamic>> _myApplications = [];
   String _searchQuery = '';
@@ -17,12 +18,39 @@ class JobProvider extends ChangeNotifier {
 
   bool get isLoading => _isLoading;
   bool get isApplying => _isApplying;
+
+  /// True jika data berasal dari fallback lokal (API tidak tersedia)
+  bool get isOffline => _isOffline;
+
   List<JobVacancyModel> get jobs {
     return _jobs.where((job) {
-      final matchesSearch = job.title.toLowerCase().contains(_searchQuery.toLowerCase()) ||
-          job.companyName.toLowerCase().contains(_searchQuery.toLowerCase()) ||
-          job.qualification.toLowerCase().contains(_searchQuery.toLowerCase());
-      return matchesSearch;
+      final q = _searchQuery.toLowerCase();
+      final matchesSearch = q.isEmpty ||
+          job.title.toLowerCase().contains(q) ||
+          job.companyName.toLowerCase().contains(q) ||
+          job.qualification.toLowerCase().contains(q) ||
+          job.location.toLowerCase().contains(q) ||
+          job.description.toLowerCase().contains(q);
+
+      bool matchesFilter = true;
+      if (_selectedCategory == '📍 DKI & Jawa Barat') {
+        final loc = job.location.toLowerCase();
+        matchesFilter = loc.contains('jakarta') ||
+            loc.contains('dki') ||
+            loc.contains('jawa barat') ||
+            loc.contains('jabar') ||
+            loc.contains('bandung') ||
+            loc.contains('bekasi') ||
+            loc.contains('bogor') ||
+            loc.contains('depok') ||
+            loc.contains('tangerang') ||
+            loc.contains('cikarang');
+      } else if (_selectedCategory == '⏱ Full-Time') {
+        final t = job.type.toLowerCase();
+        matchesFilter = t.contains('full-time') || t.contains('full time') || t.contains('penuh');
+      }
+
+      return matchesSearch && matchesFilter;
     }).toList();
   }
 
@@ -69,10 +97,17 @@ class JobProvider extends ChangeNotifier {
     notifyListeners();
 
     try {
-      final res = await repository.getJobs(token);
-      _jobs = res;
+      final result = await repository.getJobs(token);
+      _jobs = result.jobs;
+      _isOffline = result.isOffline;
+      if (kDebugMode) {
+        debugPrint(
+          'JobProvider: ${_jobs.length} lowongan dimuat. isOffline=$_isOffline',
+        );
+      }
     } catch (e) {
       _errorMessage = e.toString();
+      _isOffline = false;
     } finally {
       _isLoading = false;
       notifyListeners();
