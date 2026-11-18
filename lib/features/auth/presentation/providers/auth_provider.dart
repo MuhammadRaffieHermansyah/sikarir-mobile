@@ -41,6 +41,15 @@ class AuthProvider extends ChangeNotifier {
     notifyListeners();
   }
 
+  /// Memperbarui nama pengguna dan menyimpan ke SharedPreferences
+  Future<void> updateUserName(String newName) async {
+    if (_user != null) {
+      _user = _user!.copyWith(name: newName);
+      await _authRepository.localService.saveUserSession(_user!);
+      notifyListeners();
+    }
+  }
+
   /// Memeriksa sesi login yang tersimpan di penyimpanan lokal (SharedPreferences)
   Future<bool> checkAuthSession() async {
     _isCheckingAuth = true;

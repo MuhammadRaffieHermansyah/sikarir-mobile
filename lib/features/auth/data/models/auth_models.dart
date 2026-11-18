@@ -35,6 +35,20 @@ class LoginResponse {
     required this.email,
   });
 
+  LoginResponse copyWith({
+    String? token,
+    String? userId,
+    String? name,
+    String? email,
+  }) {
+    return LoginResponse(
+      token: token ?? this.token,
+      userId: userId ?? this.userId,
+      name: name ?? this.name,
+      email: email ?? this.email,
+    );
+  }
+
   Map<String, dynamic> toMap() {
     return {
       "token": token,
