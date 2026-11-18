@@ -1,3 +1,5 @@
+import 'package:sikarir/core/constants/api_constants.dart';
+
 class TrainingCatalogModel {
   final String id;
   final String? jadwalId;
@@ -109,7 +111,9 @@ class TrainingCatalogModel {
       endDate: (firstJadwal?['tanggal_selesai'] ?? map['tanggal_selesai'] ?? '').toString(),
       benefitTitle: (map['benefit_title'] ?? map['benefitTitle'] ?? 'BEASISWA APBN').toString(),
       benefitDesc: (map['benefit_desc'] ?? map['benefitDesc'] ?? '100% Gratis & Uang Saku Harian').toString(),
-      imageUrl: (rawImage != null && rawImage.toString().trim().isNotEmpty) ? rawImage.toString() : defaultImage,
+      imageUrl: (rawImage != null && rawImage.toString().trim().isNotEmpty)
+          ? ApiConstants.fullImageUrl(rawImage.toString())
+          : defaultImage,
       status: (firstJadwal?['status'] ?? map['status'] ?? 'tersedia').toString().toLowerCase(),
       isEnrolled: map['is_enrolled'] == true,
     );

@@ -1,3 +1,5 @@
+import 'package:sikarir/core/constants/api_constants.dart';
+
 class AttendanceItem {
   final String id;
   final String userId;
@@ -46,7 +48,13 @@ class AttendanceItem {
       status: (map['status_kehadiran'] ?? map['status'] ?? 'hadir').toString().toLowerCase(),
       notes: map['keterangan']?.toString() ?? map['notes']?.toString(),
       location: map['lokasi']?.toString() ?? map['location']?.toString(),
-      photoUrl: map['foto']?.toString() ?? map['photo_url']?.toString(),
+      photoUrl: (() {
+        final rawPhoto = map['foto']?.toString() ?? map['photo_url']?.toString();
+        if (rawPhoto != null && rawPhoto.isNotEmpty) {
+          return ApiConstants.fullImageUrl(rawPhoto);
+        }
+        return null;
+      })(),
       roomName: _resolveRoomName(map),
       latitude: _toDouble(map['latitude']),
       longitude: _toDouble(map['longitude']),
