@@ -349,10 +349,9 @@ class _CompleteProfileScreenState extends State<CompleteProfileScreen> {
           ),
         );
 
+        navigator.pop(true);
         if (widget.onCompleted != null) {
           widget.onCompleted!();
-        } else {
-          navigator.pop(true);
         }
       }
     } catch (e) {

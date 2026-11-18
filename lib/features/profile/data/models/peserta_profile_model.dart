@@ -68,7 +68,9 @@ class PesertaProfile {
               data['nomor_kk'] != null &&
               data['nomor_kk'].toString().isNotEmpty &&
               data['alamat_lengkap'] != null &&
-              data['alamat_lengkap'].toString().isNotEmpty),
+              data['alamat_lengkap'].toString().isNotEmpty &&
+              data['pendidikan_terakhir'] != null &&
+              data['pendidikan_terakhir'].toString().isNotEmpty),
     );
   }
     String? get pasFotoUrl => FileUrl.resolve(pasFoto);
