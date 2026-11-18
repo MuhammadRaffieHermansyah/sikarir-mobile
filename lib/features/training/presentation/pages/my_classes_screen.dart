@@ -18,9 +18,13 @@ class _MyClassesScreenState extends State<MyClassesScreen> {
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      final token = context.read<AuthProvider>().user?.token;
-      context.read<TrainingClassProvider>().fetchClasses(token);
+      _loadClasses();
     });
+  }
+
+  void _loadClasses() {
+    final token = context.read<AuthProvider>().user?.token;
+    context.read<TrainingClassProvider>().fetchClasses(token);
   }
 
   @override
@@ -41,10 +45,7 @@ class _MyClassesScreenState extends State<MyClassesScreen> {
         actions: [
           IconButton(
             icon: const Icon(Icons.refresh_rounded, color: AppColors.primary),
-            onPressed: () {
-              final token = context.read<AuthProvider>().user?.token;
-              provider.fetchClasses(token);
-            },
+            onPressed: _loadClasses,
           ),
         ],
       ),
@@ -74,21 +75,91 @@ class _MyClassesScreenState extends State<MyClassesScreen> {
             Expanded(
               child: provider.isLoading
                   ? const Center(child: CircularProgressIndicator(color: AppColors.primary))
-                  : provider.classes.isEmpty
-                      ? const Center(
-                          child: Text(
-                            'Tidak ada kelas pelatihan pada kategori ini.',
-                            style: TextStyle(color: AppColors.textSecondary, fontSize: 13),
+                  : provider.errorMessage != null && provider.allClasses.isEmpty
+                      ? Center(
+                          child: Padding(
+                            padding: const EdgeInsets.all(24),
+                            child: Column(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                const Icon(Icons.cloud_off_rounded, size: 48, color: Colors.red),
+                                const SizedBox(height: 12),
+                                const Text(
+                                  'Gagal Memuat Kelas',
+                                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                                ),
+                                const SizedBox(height: 6),
+                                Text(
+                                  provider.errorMessage ?? 'Silakan coba lagi beberapa saat.',
+                                  textAlign: TextAlign.center,
+                                  style: const TextStyle(fontSize: 12, color: AppColors.textSecondary),
+                                ),
+                                const SizedBox(height: 16),
+                                ElevatedButton.icon(
+                                  onPressed: _loadClasses,
+                                  icon: const Icon(Icons.refresh_rounded, size: 18),
+                                  label: const Text('Coba Lagi Beberapa Saat'),
+                                  style: ElevatedButton.styleFrom(
+                                    backgroundColor: AppColors.primary,
+                                    foregroundColor: Colors.white,
+                                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                                  ),
+                                ),
+                              ],
+                            ),
                           ),
                         )
-                      : ListView.builder(
-                          padding: const EdgeInsets.all(16),
-                          itemCount: provider.classes.length,
-                          itemBuilder: (context, index) {
-                            final item = provider.classes[index];
-                            return _buildClassCard(item);
-                          },
-                        ),
+                      : provider.classes.isEmpty
+                          ? Center(
+                              child: Padding(
+                                padding: const EdgeInsets.all(24),
+                                child: Column(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: [
+                                    const Icon(Icons.school_outlined, size: 48, color: AppColors.textMuted),
+                                    const SizedBox(height: 12),
+                                    Text(
+                                      provider.filter != 'Semua'
+                                          ? 'Tidak ada kelas pada kategori "${provider.filter}".'
+                                          : 'Belum Ada Kelas Pelatihan',
+                                      style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15, color: AppColors.textPrimary),
+                                    ),
+                                    const SizedBox(height: 6),
+                                    Text(
+                                      provider.filter != 'Semua'
+                                          ? 'Silakan pilih kategori lain atau reset filter.'
+                                          : 'Anda belum terdaftar pada kelas pelatihan mana pun. Silakan jelajahi katalog pelatihan untuk mendaftar.',
+                                      textAlign: TextAlign.center,
+                                      style: const TextStyle(fontSize: 12, color: AppColors.textSecondary),
+                                    ),
+                                    const SizedBox(height: 16),
+                                    if (provider.filter != 'Semua')
+                                      OutlinedButton(
+                                        onPressed: () => provider.setFilter('Semua'),
+                                        child: const Text('Tampilkan Semua Kelas'),
+                                      )
+                                    else
+                                      ElevatedButton(
+                                        onPressed: () => Navigator.pop(context),
+                                        style: ElevatedButton.styleFrom(
+                                          backgroundColor: AppColors.primary,
+                                          foregroundColor: Colors.white,
+                                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                                        ),
+                                        child: const Text('Jelajahi Katalog Pelatihan'),
+                                      ),
+                                  ],
+                                ),
+                              ),
+                            )
+                          : ListView.builder(
+                              padding: const EdgeInsets.all(16),
+                              itemCount: provider.classes.length,
+                              itemBuilder: (context, index) {
+                                final item = provider.classes[index];
+                                return _buildClassCard(item);
+                              },
+                            ),
             ),
           ],
         ),

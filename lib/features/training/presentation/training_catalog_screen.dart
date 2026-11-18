@@ -445,19 +445,21 @@ class _TrainingCatalogScreenState extends State<TrainingCatalogScreen> {
           ),
           const SizedBox(height: 6),
           Text(
-            provider.catalogError ?? 'Terjadi kesalahan jaringan.',
+            provider.catalogError ??
+                'Terjadi kesalahan atau koneksi terputus. Silakan coba lagi beberapa saat.',
             textAlign: TextAlign.center,
             style: const TextStyle(fontSize: 12, color: AppColors.textSecondary),
           ),
           const SizedBox(height: 14),
-          ElevatedButton(
+          ElevatedButton.icon(
             onPressed: _loadData,
+            icon: const Icon(Icons.refresh_rounded, size: 18),
+            label: const Text('Coba Lagi Beberapa Saat'),
             style: ElevatedButton.styleFrom(
               backgroundColor: AppColors.primary,
               foregroundColor: Colors.white,
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
             ),
-            child: const Text('Coba Lagi'),
           ),
         ],
       ),

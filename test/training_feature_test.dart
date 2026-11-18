@@ -88,6 +88,19 @@ class MockTrainingClassService extends TrainingClassService {
   }
 }
 
+// Error Mock Service
+class ErrorTrainingClassService extends TrainingClassService {
+  @override
+  Future<List<TrainingCatalogModel>> getCatalog([String? token]) async {
+    throw Exception('Tidak dapat terhubung ke server. Silakan coba lagi beberapa saat.');
+  }
+
+  @override
+  Future<List<TrainingClassModel>> getMyClasses([String? token]) async {
+    throw Exception('Gagal memuat kelas pelatihan saya.');
+  }
+}
+
 void main() {
   group('Training Feature Unit Tests', () {
     test('TrainingCatalogModel parses JSON correctly', () {
@@ -224,6 +237,20 @@ void main() {
       expect(enrollSuccess, true);
       expect(mockService.enrollCalled, true);
       expect(mockService.lastEnrolledJadwalId, '20');
+    });
+
+    test('TrainingClassProvider handles API error and empty response properly', () async {
+      final errorService = ErrorTrainingClassService();
+      final repository = TrainingClassRepository(service: errorService);
+      final provider = TrainingClassProvider(repository: repository);
+
+      await provider.fetchCatalog('test-token');
+      expect(provider.catalogError, contains('Tidak dapat terhubung ke server'));
+      expect(provider.catalog.isEmpty, true);
+
+      await provider.fetchClasses('test-token');
+      expect(provider.errorMessage, contains('Gagal memuat kelas'));
+      expect(provider.classes.isEmpty, true);
     });
   });
 }
