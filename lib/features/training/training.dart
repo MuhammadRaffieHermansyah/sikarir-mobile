@@ -1,3 +1,4 @@
+export 'data/models/training_catalog_model.dart';
 export 'data/models/training_class_model.dart';
 export 'data/models/training_schedule_model.dart';
 export 'data/services/training_class_service.dart';
