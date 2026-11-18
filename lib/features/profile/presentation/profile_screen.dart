@@ -7,12 +7,32 @@ import 'package:sikarir/features/auth/presentation/providers/auth_provider.dart'
 import 'package:sikarir/features/partner/partner.dart';
 import 'package:sikarir/features/training/training.dart';
 import 'package:sikarir/features/profile/presentation/pages/complete_profile_screen.dart';
-class ProfileScreen extends StatelessWidget {
+import 'package:sikarir/features/profile/presentation/providers/peserta_provider.dart';
+import 'package:sikarir/features/profile/presentation/widgets/profile_avatar.dart';
+class ProfileScreen extends StatefulWidget {
   final VoidCallback? onNotificationTap;
   const ProfileScreen({
     super.key,
     this.onNotificationTap,
   });
+
+  @override
+  State<ProfileScreen> createState() => _ProfileScreenState();
+}
+
+class _ProfileScreenState extends State<ProfileScreen> {
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      final token = context.read<AuthProvider>().user?.token;
+      final pesertaProvider = context.read<PesertaProvider>();
+      if (token != null && token.isNotEmpty && pesertaProvider.profile == null) {
+        pesertaProvider.fetchProfile(token);
+      }
+    });
+  }
   void _showLogoutDialog(BuildContext context) {
     final authProvider = context.read<AuthProvider>();
     showDialog(
@@ -136,7 +156,8 @@ class ProfileScreen extends StatelessWidget {
           children: [
             BlkHeader(
               sectionTitle: 'Profil',
-              onNotificationTap: onNotificationTap,
+              onNotificationTap: widget.onNotificationTap,
+              onProfileTap: () {},
             ),
             Expanded(
               child: ListView(
@@ -151,20 +172,7 @@ class ProfileScreen extends StatelessWidget {
                     ),
                     child: Column(
                       children: [
-                        Container(
-                          width: 72,
-                          height: 72,
-                          decoration: BoxDecoration(
-                            shape: BoxShape.circle,
-                            border: Border.all(color: AppColors.mint, width: 3),
-                            image: const DecorationImage(
-                              image: NetworkImage(
-                                'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=200&auto=format&fit=crop&q=80',
-                              ),
-                              fit: BoxFit.cover,
-                            ),
-                          ),
-                        ),
+                        const ProfileAvatar(size: 72),
                         const SizedBox(height: 12),
                         Text(
                           displayName,

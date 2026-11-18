@@ -1,3 +1,5 @@
+import 'package:sikarir/core/utils/file_url.dart';
+
 class PesertaProfile {
   final String idPeserta;
   final String idUser;
@@ -66,7 +68,7 @@ class PesertaProfile {
               data['alamat_lengkap'].toString().isNotEmpty),
     );
   }
-
+    String? get pasFotoUrl => FileUrl.resolve(pasFoto);
   Map<String, dynamic> toMap() {
     return {
       'jenis_kelamin': jenisKelamin,
