@@ -5,6 +5,7 @@ class PesertaProfile {
   final String idPeserta;
   final String idUser;
   final String nomorPeserta;
+  final String? nama;
   final String jenisKelamin;
   final String? nomorKk;
   final String? nomorWa;
@@ -25,6 +26,7 @@ class PesertaProfile {
     required this.idUser,
     required this.nomorPeserta,
     required this.jenisKelamin,
+    this.nama,
     this.nomorKk,
     this.nomorWa,
     this.tanggalLahir,
@@ -46,6 +48,9 @@ class PesertaProfile {
       idPeserta: (data['id_peserta'] ?? data['id'] ?? '').toString(),
       idUser: (data['id_user'] ?? data['user_id'] ?? '').toString(),
       nomorPeserta: (data['nomor_peserta'] ?? '').toString(),
+      nama: data['nama']?.toString() ??
+          data['name']?.toString() ??
+          (data['user'] is Map ? data['user']['name']?.toString() : null),
       jenisKelamin: (data['jenis_kelamin'] ?? 'Laki-laki').toString(),
       nomorKk: data['nomor_kk']?.toString(),
       nomorWa: data['nomor_wa']?.toString(),
@@ -76,6 +81,8 @@ class PesertaProfile {
     String? get pasFotoUrl => FileUrl.resolve(pasFoto);
   Map<String, dynamic> toMap() {
     return {
+      if (nama != null) 'nama': nama,
+      if (nama != null) 'name': nama,
       'jenis_kelamin': jenisKelamin,
       'nomor_kk': nomorKk,
       'nomor_wa': nomorWa,

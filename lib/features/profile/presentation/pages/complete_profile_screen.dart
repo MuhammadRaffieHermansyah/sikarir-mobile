@@ -20,6 +20,7 @@ class CompleteProfileScreen extends StatefulWidget {
 class _CompleteProfileScreenState extends State<CompleteProfileScreen> {
   final _formKey = GlobalKey<FormState>();
 
+  late TextEditingController _namaController;
   late TextEditingController _nomorWaController;
   late TextEditingController _nomorKkController;
   late TextEditingController _tempatLahirController;
@@ -48,6 +49,7 @@ class _CompleteProfileScreenState extends State<CompleteProfileScreen> {
   @override
   void initState() {
     super.initState();
+    _namaController = TextEditingController();
     _nomorWaController = TextEditingController();
     _nomorKkController = TextEditingController();
     _tempatLahirController = TextEditingController();
@@ -61,9 +63,25 @@ class _CompleteProfileScreenState extends State<CompleteProfileScreen> {
   }
 
   void _loadExistingData() {
+    final authUser = context.read<AuthProvider>().user;
     final profile = context.read<PesertaProvider>().profile;
+
+    if (_namaController.text.trim().isEmpty) {
+      final existingName = (profile?.nama != null && profile!.nama!.isNotEmpty)
+          ? profile.nama!
+          : (authUser?.name ?? '');
+      if (existingName.isNotEmpty) {
+        _namaController.text = existingName;
+      }
+    }
+
     if (profile != null && !_initialized) {
       setState(() {
+        if (_namaController.text.trim().isEmpty) {
+          _namaController.text = (profile.nama != null && profile.nama!.isNotEmpty)
+              ? profile.nama!
+              : (authUser?.name ?? '');
+        }
         _nomorWaController.text = profile.nomorWa ?? '';
         _nomorKkController.text = profile.nomorKk ?? '';
         _tempatLahirController.text = profile.tempatLahir ?? '';
@@ -92,6 +110,7 @@ class _CompleteProfileScreenState extends State<CompleteProfileScreen> {
 
   @override
   void dispose() {
+    _namaController.dispose();
     _nomorWaController.dispose();
     _nomorKkController.dispose();
     _tempatLahirController.dispose();
@@ -304,13 +323,18 @@ class _CompleteProfileScreenState extends State<CompleteProfileScreen> {
 
     final token = context.read<AuthProvider>().user?.token;
     final pesertaProvider = context.read<PesertaProvider>();
+    final authProvider = context.read<AuthProvider>();
     final messenger = ScaffoldMessenger.of(context);
     final navigator = Navigator.of(context);
 
     final String tglFormatted =
         '${_tanggalLahir!.year}-${_tanggalLahir!.month.toString().padLeft(2, '0')}-${_tanggalLahir!.day.toString().padLeft(2, '0')}';
 
+    final updatedName = _namaController.text.trim();
+
     final data = <String, dynamic>{
+      'nama': updatedName,
+      'name': updatedName,
       'jenis_kelamin': _jenisKelamin,
       'nomor_wa': _nomorWaController.text.trim(),
       'nomor_kk': _nomorKkController.text.trim(),
@@ -328,6 +352,9 @@ class _CompleteProfileScreenState extends State<CompleteProfileScreen> {
 
     try {
       await pesertaProvider.updateProfile(data, token, _pasFotoFile);
+      if (updatedName.isNotEmpty) {
+        await authProvider.updateUserName(updatedName);
+      }
 
       if (mounted) {
         messenger.showSnackBar(
@@ -395,6 +422,11 @@ class _CompleteProfileScreenState extends State<CompleteProfileScreen> {
       ),
       body: Consumer<PesertaProvider>(
         builder: (context, provider, _) {
+          if (!_initialized && provider.profile != null) {
+            WidgetsBinding.instance.addPostFrameCallback((_) {
+              _loadExistingData();
+            });
+          }
           return SingleChildScrollView(
             padding: const EdgeInsets.all(16),
             child: Form(
@@ -508,6 +540,28 @@ class _CompleteProfileScreenState extends State<CompleteProfileScreen> {
                     title: 'Data Pribadi',
                     icon: Icons.person_rounded,
                     children: [
+                      // Nama Lengkap
+                      _buildLabel('Nama Lengkap *'),
+                      TextFormField(
+                        controller: _namaController,
+                        keyboardType: TextInputType.name,
+                        textCapitalization: TextCapitalization.words,
+                        decoration: _inputDecoration(
+                          hint: 'Masukkan nama lengkap sesuai KTP',
+                          prefixIcon: Icons.person_outline_rounded,
+                        ),
+                        validator: (v) {
+                          if (v == null || v.trim().isEmpty) {
+                            return 'Nama lengkap wajib diisi';
+                          }
+                          if (v.trim().length < 3) {
+                            return 'Nama minimal 3 karakter';
+                          }
+                          return null;
+                        },
+                      ),
+                      const SizedBox(height: 16),
+
                       // Jenis Kelamin
                       _buildLabel('Jenis Kelamin *'),
                       Row(
