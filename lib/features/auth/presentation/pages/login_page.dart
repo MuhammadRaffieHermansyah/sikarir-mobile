@@ -493,69 +493,69 @@ class _LoginScreenState extends State<LoginScreen> {
                         ),
                         const SizedBox(height: 22),
 
-                        // Divider
-                        Row(
-                          children: [
-                            Expanded(
-                              child: Divider(color: Colors.grey.shade200, thickness: 1),
-                            ),
-                            Padding(
-                              padding: const EdgeInsets.symmetric(horizontal: 12),
-                              child: Text(
-                                'atau masuk dengan',
-                                style: TextStyle(
-                                  fontSize: 12,
-                                  color: Colors.grey.shade500,
-                                  fontWeight: FontWeight.w500,
-                                ),
-                              ),
-                            ),
-                            Expanded(
-                              child: Divider(color: Colors.grey.shade200, thickness: 1),
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 18),
+                        // // Divider
+                        // Row(
+                        //   children: [
+                        //     Expanded(
+                        //       child: Divider(color: Colors.grey.shade200, thickness: 1),
+                        //     ),
+                        //     Padding(
+                        //       padding: const EdgeInsets.symmetric(horizontal: 12),
+                        //       child: Text(
+                        //         'atau masuk dengan',
+                        //         style: TextStyle(
+                        //           fontSize: 12,
+                        //           color: Colors.grey.shade500,
+                        //           fontWeight: FontWeight.w500,
+                        //         ),
+                        //       ),
+                        //     ),
+                        //     Expanded(
+                        //       child: Divider(color: Colors.grey.shade200, thickness: 1),
+                        //     ),
+                        //   ],
+                        // ),
+                        // const SizedBox(height: 18),
 
-                        // Social Buttons
-                        Row(
-                          children: [
-                            Expanded(
-                              child: _buildSocialCard(
-                                icon: Icons.g_mobiledata_rounded,
-                                iconSize: 28,
-                                label: 'Google',
-                                iconColor: Colors.red.shade600,
-                                onTap: () {
-                                  ScaffoldMessenger.of(context).showSnackBar(
-                                    const SnackBar(
-                                      content: Text('Login Google akan segera tersedia'),
-                                      behavior: SnackBarBehavior.floating,
-                                    ),
-                                  );
-                                },
-                              ),
-                            ),
-                            const SizedBox(width: 14),
-                            Expanded(
-                              child: _buildSocialCard(
-                                icon: Icons.apple,
-                                iconSize: 22,
-                                label: 'Apple ID',
-                                iconColor: Colors.black87,
-                                onTap: () {
-                                  ScaffoldMessenger.of(context).showSnackBar(
-                                    const SnackBar(
-                                      content: Text('Login Apple ID akan segera tersedia'),
-                                      behavior: SnackBarBehavior.floating,
-                                    ),
-                                  );
-                                },
-                              ),
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 24),
+                        // // Social Buttons
+                        // Row(
+                        //   children: [
+                        //     Expanded(
+                        //       child: _buildSocialCard(
+                        //         icon: Icons.g_mobiledata_rounded,
+                        //         iconSize: 28,
+                        //         label: 'Google',
+                        //         iconColor: Colors.red.shade600,
+                        //         onTap: () {
+                        //           ScaffoldMessenger.of(context).showSnackBar(
+                        //             const SnackBar(
+                        //               content: Text('Login Google akan segera tersedia'),
+                        //               behavior: SnackBarBehavior.floating,
+                        //             ),
+                        //           );
+                        //         },
+                        //       ),
+                        //     ),
+                        //     const SizedBox(width: 14),
+                        //     Expanded(
+                        //       child: _buildSocialCard(
+                        //         icon: Icons.apple,
+                        //         iconSize: 22,
+                        //         label: 'Apple ID',
+                        //         iconColor: Colors.black87,
+                        //         onTap: () {
+                        //           ScaffoldMessenger.of(context).showSnackBar(
+                        //             const SnackBar(
+                        //               content: Text('Login Apple ID akan segera tersedia'),
+                        //               behavior: SnackBarBehavior.floating,
+                        //             ),
+                        //           );
+                        //         },
+                        //       ),
+                        //     ),
+                        //   ],
+                        // ),
+                        // const SizedBox(height: 24),
 
                         // Register Switch Link
                         Row(

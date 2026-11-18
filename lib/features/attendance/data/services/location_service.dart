@@ -4,8 +4,8 @@ import 'package:geolocator/geolocator.dart';
 /// Service untuk menangani GPS dan validasi lokasi presensi.
 class LocationService {
   /// Koordinat lokasi BLK Jember (default jika jadwal belum dikonfigurasi)
-  static const double defaultLat = -8.1763;
-  static const double defaultLng = 113.7007;
+  static const double defaultLat = -8.15753;
+  static const double defaultLng = 113.7229492;
   static const int defaultRadius = 100; // meter
   static const String defaultLokasiLabel = 'BLK Jember, Jl. Basuki Rahmat No. 203';
 

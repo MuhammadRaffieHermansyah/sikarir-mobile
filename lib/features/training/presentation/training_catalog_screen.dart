@@ -1,6 +1,12 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import 'package:sikarir/core/constants/app_theme.dart';
 import 'package:sikarir/core/widgets/blk_header.dart';
+import 'package:sikarir/features/auth/presentation/providers/auth_provider.dart';
+import 'package:sikarir/features/training/data/models/training_catalog_model.dart';
+import 'package:sikarir/features/training/presentation/pages/my_classes_screen.dart';
+import 'package:sikarir/features/training/presentation/pages/training_schedule_screen.dart';
+import 'package:sikarir/features/training/presentation/providers/training_class_provider.dart';
 import 'package:sikarir/features/training/presentation/training_detail_screen.dart';
 
 class TrainingCatalogScreen extends StatefulWidget {
@@ -18,64 +24,29 @@ class TrainingCatalogScreen extends StatefulWidget {
 }
 
 class _TrainingCatalogScreenState extends State<TrainingCatalogScreen> {
-  int _selectedCategoryIndex = 0;
   final TextEditingController _searchController = TextEditingController();
 
   final List<String> _categories = [
-    'Semua (48)',
-    'Teknologi & IT',
-    'Desain Grafis',
-    'Manufaktur & Las',
-    'Otomotif Modern',
+    'Semua',
+    'TIK & INFORMATIKA',
+    'MANUFAKTUR & LAS',
+    'OTOMOTIF MODERN',
+    'BISNIS & MANAJEMEN',
   ];
 
-  final List<Map<String, dynamic>> _trainings = [
-    {
-      'title': 'Desain Grafis & Motion Advertising',
-      'skkniCode': 'SKKNI No. M.74100.001.02 • Lisensi BNSP Level 3',
-      'category': 'TIK & INFORMATIKA',
-      'badge': 'BNSP Level 4',
-      'quota': 'Sisa Kuota: 4 Peserta',
-      'location': 'BLK Jember, Jawa Timur',
-      'duration': '40 JP (Intensif)',
-      'desc':
-          'Kuasai visual branding, motion animation untuk periklanan digital, dan kurikulum standar industri',
-      'benefitTitle': 'BEASISWA APBN',
-      'benefitDesc': '100% Gratis & Uang Saku Harian',
-      'image':
-          'https://images.unsplash.com/photo-1531482615713-2afd69097998?w=800&auto=format&fit=crop&q=80',
-    },
-    {
-      'title': 'Teknik Las Industri 3G/4G SMAW',
-      'skkniCode': 'SKKNI No. C.25920.001.01 • Standar ASME Migas',
-      'category': 'MANUFAKTUR & LAS',
-      'badge': 'Sertifikasi Migas',
-      'quota': 'Sisa Kuota: 8 Peserta',
-      'location': 'BBVP Serang, Banten',
-      'duration': '320 JP (45 Hari Kerja)',
-      'desc':
-          'Spesialisasi pengelasan pelat posisi 3G & 4G bersertifikasi BNSP dan uji standar ASME untuk kebutuhan industri galangan kapal dan fabrikasi berat.',
-      'benefitTitle': 'FASILITAS LENGKAP',
-      'benefitDesc': 'Asrama BBVP + APD & Sertifikasi Uji Las',
-      'image':
-          'https://images.unsplash.com/photo-1504917599217-d4dc5ebe6122?w=800&auto=format&fit=crop&q=80',
-    },
-    {
-      'title': 'Teknisi Kendaraan Listrik (EV) & Injeksi',
-      'skkniCode': 'SKKNI No. G.45201.002.01 • Lisensi APMEV',
-      'category': 'OTOMOTIF MODERN',
-      'badge': 'Standar APMEV',
-      'quota': 'Sisa Kuota: 3 Peserta',
-      'location': 'BLK Bekasi, Jawa Barat',
-      'duration': '240 JP (Kurikulum Industri)',
-      'desc':
-          'Pelajari arsitektur baterai high-voltage motor listrik & mobil listrik, kalibrasi ECU injeksi cerdas.',
-      'benefitTitle': 'PENYALURAN KERJA',
-      'benefitDesc': 'Didukung 14 Mitra Industri APM',
-      'image':
-          'https://images.unsplash.com/photo-1617788138017-80ad40651399?w=800&auto=format&fit=crop&q=80',
-    },
-  ];
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _loadData();
+    });
+  }
+
+  void _loadData() {
+    final token = context.read<AuthProvider>().user?.token;
+    context.read<TrainingClassProvider>().fetchCatalog(token);
+    context.read<TrainingClassProvider>().fetchClasses(token);
+  }
 
   @override
   void dispose() {
@@ -83,25 +54,19 @@ class _TrainingCatalogScreenState extends State<TrainingCatalogScreen> {
     super.dispose();
   }
 
-  void _navigateToDetail(Map<String, dynamic> item) {
+  void _navigateToDetail(TrainingCatalogModel item) {
     Navigator.push(
       context,
       MaterialPageRoute(
-        builder: (context) => TrainingDetailScreen(
-          title: item['title'] as String,
-          skkniCode: item['skkniCode'] as String,
-          duration: (item['duration'] as String).split(' ').first,
-          location: (item['location'] as String).split(',').first,
-          quota: '16/20 Peserta',
-          certification: item['badge'] as String,
-          imageUrl: item['image'] as String,
-        ),
+        builder: (context) => TrainingDetailScreen(model: item),
       ),
     );
   }
 
   @override
   Widget build(BuildContext context) {
+    final provider = context.watch<TrainingClassProvider>();
+
     return Scaffold(
       backgroundColor: AppColors.background,
       body: SafeArea(
@@ -113,206 +78,218 @@ class _TrainingCatalogScreenState extends State<TrainingCatalogScreen> {
               onProfileTap: widget.onProfileTap,
             ),
             Expanded(
-              child: ListView(
-                padding: const EdgeInsets.symmetric(horizontal: 16),
-                children: [
-                  // Title & Batch Tag
-                  Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: const [
-                            Text(
-                              'Katalog Pelatihan Vokasi',
-                              style: TextStyle(
-                                fontSize: 20,
-                                fontWeight: FontWeight.w800,
-                                color: AppColors.textPrimary,
-                                letterSpacing: -0.5,
+              child: RefreshIndicator(
+                color: AppColors.primary,
+                onRefresh: () async {
+                  final token = context.read<AuthProvider>().user?.token;
+                  await Future.wait([
+                    provider.fetchCatalog(token),
+                    provider.fetchClasses(token),
+                  ]);
+                },
+                child: ListView(
+                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                  children: [
+                    // Title & Batch Tag
+                    Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                'Katalog Pelatihan Vokasi',
+                                style: TextStyle(
+                                  fontSize: 20,
+                                  fontWeight: FontWeight.w800,
+                                  color: AppColors.textPrimary,
+                                  letterSpacing: -0.5,
+                                ),
                               ),
-                            ),
-                            SizedBox(height: 3),
-                            Text(
-                              'Tersertifikasi BNSP & Disubsidi Penuh Kemnaker RI',
-                              style: TextStyle(
-                                fontSize: 11,
-                                color: AppColors.textSecondary,
+                              SizedBox(height: 3),
+                              Text(
+                                'Tersertifikasi BNSP & Disubsidi Penuh Kemnaker RI',
+                                style: TextStyle(
+                                  fontSize: 11,
+                                  color: AppColors.textSecondary,
+                                ),
                               ),
-                            ),
-                          ],
+                            ],
+                          ),
                         ),
-                      ),
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                        decoration: BoxDecoration(
-                          color: AppColors.mint,
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Container(
-                              width: 6,
-                              height: 6,
-                              decoration: const BoxDecoration(
-                                color: AppColors.mintDark,
-                                shape: BoxShape.circle,
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                          decoration: BoxDecoration(
+                            color: AppColors.mint,
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Container(
+                                width: 6,
+                                height: 6,
+                                decoration: const BoxDecoration(
+                                  color: AppColors.mintDark,
+                                  shape: BoxShape.circle,
+                                ),
                               ),
-                            ),
-                            const SizedBox(width: 5),
-                            const Text(
-                              'Batch Aktif',
-                              style: TextStyle(
-                                fontSize: 10,
-                                fontWeight: FontWeight.w800,
-                                color: AppColors.mintDark,
+                              const SizedBox(width: 5),
+                              const Text(
+                                'Batch Aktif',
+                                style: TextStyle(
+                                  fontSize: 10,
+                                  fontWeight: FontWeight.w800,
+                                  color: AppColors.mintDark,
+                                ),
                               ),
-                            ),
-                          ],
+                            ],
+                          ),
                         ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 14),
+                      ],
+                    ),
+                    const SizedBox(height: 14),
 
-                  // Search Bar & Filter Button
-                  Row(
-                    children: [
-                      Expanded(
-                        child: Container(
-                          height: 44,
+                    // Quick Navigation Buttons: Kelas Saya & Jadwal Pelatihan
+                    _buildQuickActionButtons(provider),
+                    const SizedBox(height: 14),
+
+                    // Search Bar
+                    Row(
+                      children: [
+                        Expanded(
+                          child: Container(
+                            height: 44,
+                            decoration: BoxDecoration(
+                              color: Colors.white,
+                              borderRadius: BorderRadius.circular(12),
+                              border: Border.all(color: AppColors.cardBorder),
+                            ),
+                            child: TextField(
+                              controller: _searchController,
+                              style: const TextStyle(fontSize: 13),
+                              onChanged: (val) {
+                                provider.setSearchQuery(val);
+                              },
+                              decoration: InputDecoration(
+                                hintText: 'Cari kejuruan, kode SKKNI, topik...',
+                                hintStyle: const TextStyle(
+                                  fontSize: 12,
+                                  color: AppColors.textMuted,
+                                ),
+                                prefixIcon: const Icon(
+                                  Icons.search,
+                                  color: AppColors.textSecondary,
+                                  size: 20,
+                                ),
+                                suffixIcon: _searchController.text.isNotEmpty
+                                    ? IconButton(
+                                        icon: const Icon(Icons.close_rounded, size: 18),
+                                        onPressed: () {
+                                          _searchController.clear();
+                                          provider.setSearchQuery('');
+                                        },
+                                      )
+                                    : null,
+                                border: InputBorder.none,
+                                contentPadding: const EdgeInsets.symmetric(vertical: 12),
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 12),
+
+                    // Category Filter Chips
+                    SingleChildScrollView(
+                      scrollDirection: Axis.horizontal,
+                      child: Row(
+                        children: _categories.map((cat) {
+                          final isSelected =
+                              provider.catalogCategoryFilter.toLowerCase() == cat.toLowerCase();
+                          return Padding(
+                            padding: const EdgeInsets.only(right: 8),
+                            child: ChoiceChip(
+                              label: Text(cat),
+                              selected: isSelected,
+                              onSelected: (_) {
+                                provider.setCatalogFilter(cat);
+                              },
+                              selectedColor: AppColors.primary,
+                              labelStyle: TextStyle(
+                                color: isSelected ? Colors.white : AppColors.textPrimary,
+                                fontWeight: isSelected ? FontWeight.bold : FontWeight.w600,
+                                fontSize: 11,
+                              ),
+                            ),
+                          );
+                        }).toList(),
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+
+                    // Official Kemnaker Guarantee sub-banner
+                    Row(
+                      children: [
+                        const Icon(
+                          Icons.verified_user_outlined,
+                          color: AppColors.mintDark,
+                          size: 15,
+                        ),
+                        const SizedBox(width: 6),
+                        const Text(
+                          'Terdaftar Resmi Kemnaker RI',
+                          style: TextStyle(
+                            fontSize: 11,
+                            fontWeight: FontWeight.w700,
+                            color: AppColors.mintDark,
+                          ),
+                        ),
+                        const Spacer(),
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
                           decoration: BoxDecoration(
                             color: Colors.white,
-                            borderRadius: BorderRadius.circular(12),
+                            borderRadius: BorderRadius.circular(10),
                             border: Border.all(color: AppColors.cardBorder),
                           ),
-                          child: TextField(
-                            controller: _searchController,
-                            style: const TextStyle(fontSize: 13),
-                            decoration: const InputDecoration(
-                              hintText: 'Cari kejuruan, kode SKKNI, topik...',
-                              hintStyle: TextStyle(
-                                fontSize: 12,
-                                color: AppColors.textMuted,
-                              ),
-                              prefixIcon: Icon(
-                                Icons.search,
-                                color: AppColors.textSecondary,
-                                size: 20,
-                              ),
-                              border: InputBorder.none,
-                              contentPadding: EdgeInsets.symmetric(vertical: 12),
+                          child: const Text(
+                            'Tahun Anggaran 2026',
+                            style: TextStyle(
+                              fontSize: 10,
+                              fontWeight: FontWeight.w600,
+                              color: AppColors.textSecondary,
                             ),
                           ),
                         ),
-                      ),
-                      const SizedBox(width: 8),
-                      Container(
-                        width: 44,
-                        height: 44,
-                        decoration: BoxDecoration(
-                          color: Colors.white,
-                          borderRadius: BorderRadius.circular(12),
-                          border: Border.all(color: AppColors.cardBorder),
-                        ),
-                        child: const Icon(
-                          Icons.tune_rounded,
-                          color: AppColors.primary,
-                          size: 20,
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 14),
-
-                  // Category Filter Chips
-                  SizedBox(
-                    height: 34,
-                    child: ListView.separated(
-                      scrollDirection: Axis.horizontal,
-                      itemCount: _categories.length,
-                      separatorBuilder: (context, index) => const SizedBox(width: 8),
-                      itemBuilder: (context, index) {
-                        final isSelected = index == _selectedCategoryIndex;
-                        return GestureDetector(
-                          onTap: () {
-                            setState(() {
-                              _selectedCategoryIndex = index;
-                            });
-                          },
-                          child: Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 14),
-                            alignment: Alignment.center,
-                            decoration: BoxDecoration(
-                              color: isSelected ? AppColors.primary : Colors.white,
-                              borderRadius: BorderRadius.circular(20),
-                              border: Border.all(
-                                color: isSelected ? AppColors.primary : AppColors.cardBorder,
-                              ),
-                            ),
-                            child: Text(
-                              _categories[index],
-                              style: TextStyle(
-                                fontSize: 12,
-                                fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
-                                color: isSelected ? Colors.white : AppColors.textPrimary,
-                              ),
-                            ),
-                          ),
-                        );
-                      },
+                      ],
                     ),
-                  ),
-                  const SizedBox(height: 14),
+                    const SizedBox(height: 14),
 
-                  // Official Kemnaker Guarantee sub-banner
-                  Row(
-                    children: [
-                      const Icon(
-                        Icons.verified_user_outlined,
-                        color: AppColors.mintDark,
-                        size: 15,
-                      ),
-                      const SizedBox(width: 6),
-                      const Text(
-                        'Terdaftar Resmi Kemnaker',
-                        style: TextStyle(
-                          fontSize: 11,
-                          fontWeight: FontWeight.w700,
-                          color: AppColors.mintDark,
+                    // Content State Handling
+                    if (provider.isLoadingCatalog && provider.allCatalog.isEmpty)
+                      const Padding(
+                        padding: EdgeInsets.symmetric(vertical: 40),
+                        child: Center(
+                          child: CircularProgressIndicator(color: AppColors.primary),
                         ),
-                      ),
-                      const Spacer(),
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                        decoration: BoxDecoration(
-                          color: Colors.white,
-                          borderRadius: BorderRadius.circular(10),
-                          border: Border.all(color: AppColors.cardBorder),
-                        ),
-                        child: const Text(
-                          'Tahun Anggaran 2026',
-                          style: TextStyle(
-                            fontSize: 10,
-                            fontWeight: FontWeight.w600,
-                            color: AppColors.textSecondary,
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 14),
+                      )
+                    else if (provider.catalogError != null && provider.allCatalog.isEmpty)
+                      _buildErrorCard(provider)
+                    else if (provider.catalog.isEmpty)
+                      _buildEmptyState(provider)
+                    else
+                      ...provider.catalog.map((item) => _buildTrainingCard(item)),
 
-                  // Training Cards List
-                  ..._trainings.map((item) => _buildTrainingCard(item)),
-                  const SizedBox(height: 10),
+                    const SizedBox(height: 10),
 
-                  // Selection Announcement Box (Gelombang II 2026 Segera Ditutup)
-                  _buildSelectionAnnouncementBanner(),
-                  const SizedBox(height: 24),
-                ],
+                    // Selection Announcement Box (Gelombang II 2026 Segera Ditutup)
+                    _buildSelectionAnnouncementBanner(),
+                    const SizedBox(height: 24),
+                  ],
+                ),
               ),
             ),
           ],
@@ -321,7 +298,212 @@ class _TrainingCatalogScreenState extends State<TrainingCatalogScreen> {
     );
   }
 
-  Widget _buildTrainingCard(Map<String, dynamic> item) {
+  Widget _buildQuickActionButtons(TrainingClassProvider provider) {
+    final classCount = provider.allClasses.length;
+
+    return Row(
+      children: [
+        Expanded(
+          child: InkWell(
+            onTap: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => const MyClassesScreen()),
+              );
+            },
+            borderRadius: BorderRadius.circular(12),
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: AppColors.cardBorder),
+              ),
+              child: Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(6),
+                    decoration: BoxDecoration(
+                      color: AppColors.mintBg,
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: const Icon(
+                      Icons.school_outlined,
+                      color: AppColors.mintDark,
+                      size: 18,
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text(
+                          'Kelas Saya',
+                          style: TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.bold,
+                            color: AppColors.textPrimary,
+                          ),
+                        ),
+                        Text(
+                          classCount > 0 ? '$classCount Kelas Aktif' : 'Lihat Kelas',
+                          style: const TextStyle(
+                            fontSize: 10,
+                            color: AppColors.textSecondary,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const Icon(Icons.chevron_right, size: 16, color: AppColors.textSecondary),
+                ],
+              ),
+            ),
+          ),
+        ),
+        const SizedBox(width: 10),
+        Expanded(
+          child: InkWell(
+            onTap: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => const TrainingScheduleScreen()),
+              );
+            },
+            borderRadius: BorderRadius.circular(12),
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: AppColors.cardBorder),
+              ),
+              child: Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(6),
+                    decoration: BoxDecoration(
+                      color: AppColors.peachBg,
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: const Icon(
+                      Icons.event_note_outlined,
+                      color: AppColors.peachText,
+                      size: 18,
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  const Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Jadwal Pelatihan',
+                          style: TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.bold,
+                            color: AppColors.textPrimary,
+                          ),
+                        ),
+                        Text(
+                          'Cek Sesi Kelas',
+                          style: TextStyle(
+                            fontSize: 10,
+                            color: AppColors.textSecondary,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const Icon(Icons.chevron_right, size: 16, color: AppColors.textSecondary),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildErrorCard(TrainingClassProvider provider) {
+    return Container(
+      margin: const EdgeInsets.symmetric(vertical: 24),
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: Colors.red.shade100),
+      ),
+      child: Column(
+        children: [
+          const Icon(Icons.cloud_off_rounded, color: Colors.red, size: 40),
+          const SizedBox(height: 12),
+          const Text(
+            'Gagal Memuat Data Pelatihan',
+            style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+          ),
+          const SizedBox(height: 6),
+          Text(
+            provider.catalogError ??
+                'Terjadi kesalahan atau koneksi terputus. Silakan coba lagi beberapa saat.',
+            textAlign: TextAlign.center,
+            style: const TextStyle(fontSize: 12, color: AppColors.textSecondary),
+          ),
+          const SizedBox(height: 14),
+          ElevatedButton.icon(
+            onPressed: _loadData,
+            icon: const Icon(Icons.refresh_rounded, size: 18),
+            label: const Text('Coba Lagi Beberapa Saat'),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppColors.primary,
+              foregroundColor: Colors.white,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildEmptyState(TrainingClassProvider provider) {
+    return Container(
+      margin: const EdgeInsets.symmetric(vertical: 30),
+      padding: const EdgeInsets.all(24),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: AppColors.cardBorder),
+      ),
+      child: Column(
+        children: [
+          const Icon(Icons.search_off_rounded, color: AppColors.textMuted, size: 48),
+          const SizedBox(height: 12),
+          const Text(
+            'Pelatihan Tidak Ditemukan',
+            style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15, color: AppColors.textPrimary),
+          ),
+          const SizedBox(height: 6),
+          const Text(
+            'Tidak ada pelatihan yang cocok dengan filter atau kata kunci pencarian Anda.',
+            textAlign: TextAlign.center,
+            style: TextStyle(fontSize: 12, color: AppColors.textSecondary),
+          ),
+          const SizedBox(height: 16),
+          OutlinedButton(
+            onPressed: () {
+              _searchController.clear();
+              provider.setSearchQuery('');
+              provider.setCatalogFilter('Semua');
+            },
+            child: const Text('Reset Pencarian & Filter'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildTrainingCard(TrainingCatalogModel item) {
     return Container(
       margin: const EdgeInsets.only(bottom: 16),
       decoration: BoxDecoration(
@@ -341,7 +523,7 @@ class _TrainingCatalogScreenState extends State<TrainingCatalogScreen> {
                   height: 150,
                   width: double.infinity,
                   child: Image.network(
-                    item['image'] as String,
+                    item.imageUrl,
                     fit: BoxFit.cover,
                     errorBuilder: (context, error, stackTrace) => Container(
                       color: AppColors.mintBg,
@@ -363,7 +545,7 @@ class _TrainingCatalogScreenState extends State<TrainingCatalogScreen> {
                     borderRadius: BorderRadius.circular(6),
                   ),
                   child: Text(
-                    item['category'] as String,
+                    item.category,
                     style: const TextStyle(
                       fontSize: 9,
                       fontWeight: FontWeight.w800,
@@ -388,7 +570,7 @@ class _TrainingCatalogScreenState extends State<TrainingCatalogScreen> {
                       const Icon(Icons.stars, size: 10, color: Colors.white),
                       const SizedBox(width: 4),
                       Text(
-                        item['badge'] as String,
+                        item.badge,
                         style: const TextStyle(
                           fontSize: 9,
                           fontWeight: FontWeight.w800,
@@ -399,38 +581,69 @@ class _TrainingCatalogScreenState extends State<TrainingCatalogScreen> {
                   ),
                 ),
               ),
-              // Bottom Quota Badge
+              // Bottom Badges: Quota & Enrolled Indicator
               Positioned(
                 bottom: 10,
                 left: 10,
-                child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                  decoration: BoxDecoration(
-                    color: Colors.white.withValues(alpha: 0.95),
-                    borderRadius: BorderRadius.circular(14),
-                  ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
+                right: 10,
+                child: Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                      decoration: BoxDecoration(
+                        color: Colors.white.withValues(alpha: 0.95),
+                        borderRadius: BorderRadius.circular(14),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Container(
+                            width: 6,
+                            height: 6,
+                            decoration: BoxDecoration(
+                              color: item.remainingQuota > 0 ? AppColors.orange : Colors.grey,
+                              shape: BoxShape.circle,
+                            ),
+                          ),
+                          const SizedBox(width: 5),
+                          Text(
+                            item.remainingQuota > 0
+                                ? 'Sisa Kuota: ${item.remainingQuota} Peserta'
+                                : 'Kuota Penuh',
+                            style: const TextStyle(
+                              fontSize: 10,
+                              fontWeight: FontWeight.w700,
+                              color: AppColors.textPrimary,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const Spacer(),
+                    if (item.isEnrolled)
                       Container(
-                        width: 5,
-                        height: 5,
-                        decoration: const BoxDecoration(
-                          color: AppColors.orange,
-                          shape: BoxShape.circle,
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                        decoration: BoxDecoration(
+                          color: AppColors.mintDark,
+                          borderRadius: BorderRadius.circular(14),
+                        ),
+                        child: const Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(Icons.check_circle_rounded, size: 12, color: Colors.white),
+                            SizedBox(width: 4),
+                            Text(
+                              'Terdaftar',
+                              style: TextStyle(
+                                fontSize: 10,
+                                fontWeight: FontWeight.bold,
+                                color: Colors.white,
+                              ),
+                            ),
+                          ],
                         ),
                       ),
-                      const SizedBox(width: 5),
-                      Text(
-                        item['quota'] as String,
-                        style: const TextStyle(
-                          fontSize: 10,
-                          fontWeight: FontWeight.w700,
-                          color: AppColors.textPrimary,
-                        ),
-                      ),
-                    ],
-                  ),
+                  ],
                 ),
               ),
             ],
@@ -447,9 +660,12 @@ class _TrainingCatalogScreenState extends State<TrainingCatalogScreen> {
                   children: [
                     const Icon(Icons.location_on_outlined, size: 13, color: AppColors.textSecondary),
                     const SizedBox(width: 3),
-                    Text(
-                      item['location'] as String,
-                      style: const TextStyle(fontSize: 11, color: AppColors.textSecondary),
+                    Expanded(
+                      child: Text(
+                        item.location,
+                        style: const TextStyle(fontSize: 11, color: AppColors.textSecondary),
+                        overflow: TextOverflow.ellipsis,
+                      ),
                     ),
                     const SizedBox(width: 6),
                     const Text('•', style: TextStyle(color: AppColors.textMuted)),
@@ -457,7 +673,7 @@ class _TrainingCatalogScreenState extends State<TrainingCatalogScreen> {
                     const Icon(Icons.access_time, size: 13, color: AppColors.textSecondary),
                     const SizedBox(width: 3),
                     Text(
-                      item['duration'] as String,
+                      item.duration,
                       style: const TextStyle(fontSize: 11, color: AppColors.textSecondary),
                     ),
                   ],
@@ -466,7 +682,7 @@ class _TrainingCatalogScreenState extends State<TrainingCatalogScreen> {
 
                 // Course Title
                 Text(
-                  item['title'] as String,
+                  item.title,
                   style: const TextStyle(
                     fontSize: 16,
                     fontWeight: FontWeight.w800,
@@ -477,7 +693,7 @@ class _TrainingCatalogScreenState extends State<TrainingCatalogScreen> {
 
                 // Description
                 Text(
-                  item['desc'] as String,
+                  item.description,
                   style: const TextStyle(
                     fontSize: 11,
                     color: AppColors.textSecondary,
@@ -516,7 +732,7 @@ class _TrainingCatalogScreenState extends State<TrainingCatalogScreen> {
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Text(
-                              item['benefitTitle'] as String,
+                              item.benefitTitle,
                               style: const TextStyle(
                                 fontSize: 9,
                                 fontWeight: FontWeight.w800,
@@ -525,7 +741,7 @@ class _TrainingCatalogScreenState extends State<TrainingCatalogScreen> {
                               ),
                             ),
                             Text(
-                              item['benefitDesc'] as String,
+                              item.benefitDesc,
                               style: const TextStyle(
                                 fontSize: 11,
                                 fontWeight: FontWeight.w600,
@@ -562,25 +778,25 @@ class _TrainingCatalogScreenState extends State<TrainingCatalogScreen> {
                   child: ElevatedButton(
                     onPressed: () => _navigateToDetail(item),
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: AppColors.primary,
+                      backgroundColor: item.isEnrolled ? AppColors.mintDark : AppColors.primary,
                       foregroundColor: Colors.white,
                       elevation: 0,
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(10),
                       ),
                     ),
-                    child: const Row(
+                    child: Row(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
                         Text(
-                          'Lihat Detail Pelatihan',
-                          style: TextStyle(
+                          item.isEnrolled ? 'Lihat Detail (Terdaftar)' : 'Lihat Detail Pelatihan',
+                          style: const TextStyle(
                             fontSize: 13,
                             fontWeight: FontWeight.bold,
                           ),
                         ),
-                        SizedBox(width: 6),
-                        Icon(Icons.arrow_forward_rounded, size: 16),
+                        const SizedBox(width: 6),
+                        const Icon(Icons.arrow_forward_rounded, size: 16),
                       ],
                     ),
                   ),
@@ -606,8 +822,8 @@ class _TrainingCatalogScreenState extends State<TrainingCatalogScreen> {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Row(
-                children: const [
+              const Row(
+                children: [
                   Icon(Icons.event_note, color: Colors.white, size: 18),
                   SizedBox(width: 6),
                   Text(
@@ -666,7 +882,6 @@ class _TrainingCatalogScreenState extends State<TrainingCatalogScreen> {
           const SizedBox(height: 14),
           Row(
             children: [
-              // Stacked Avatar badges
               Row(
                 children: [
                   _buildCityAvatar('JKT'),

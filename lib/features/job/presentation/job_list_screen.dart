@@ -241,6 +241,7 @@ class _JobListScreenState extends State<JobListScreen> {
                               setState(() {
                                 _selectedFilterIndex = index;
                               });
+                              context.read<JobProvider>().setCategory(_filters[index]);
                             },
                             child: Container(
                               padding: const EdgeInsets.symmetric(horizontal: 14),
@@ -372,6 +373,10 @@ class _JobListScreenState extends State<JobListScreen> {
                     ),
                     const SizedBox(height: 12),
 
+                    // Banner offline (API tidak tersedia, tampil data demo)
+                    if (!provider.isLoading && provider.isOffline)
+                      _buildOfflineBanner(),
+
                     // Loading / Error / Empty / Job cards
                     if (provider.isLoading)
                       const Center(
@@ -398,6 +403,50 @@ class _JobListScreenState extends State<JobListScreen> {
             ),
           ],
         ),
+      ),
+    );
+  }
+
+  Widget _buildOfflineBanner() {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 12),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+      decoration: BoxDecoration(
+        color: const Color(0xFFFFF3CD),
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: const Color(0xFFFFD54F)),
+      ),
+      child: Row(
+        children: [
+          const Icon(Icons.wifi_off_rounded, size: 16, color: Color(0xFFF57F17)),
+          const SizedBox(width: 8),
+          const Expanded(
+            child: Text(
+              'Tidak terhubung ke server. Menampilkan data contoh.',
+              style: TextStyle(
+                fontSize: 11,
+                color: Color(0xFF5D4037),
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+          ),
+          GestureDetector(
+            onTap: () {
+              final token = context.read<AuthProvider>().user?.token;
+              print(token);
+              context.read<JobProvider>().fetchJobs(token);
+            },
+            child: const Text(
+              'Coba lagi',
+              style: TextStyle(
+                fontSize: 11,
+                color: Color(0xFFF57F17),
+                fontWeight: FontWeight.w700,
+                decoration: TextDecoration.underline,
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -471,16 +520,18 @@ class _JobListScreenState extends State<JobListScreen> {
                   color: AppColors.background,
                   borderRadius: BorderRadius.circular(8),
                   border: Border.all(color: AppColors.cardBorder),
-                  image: job.companyLogo.isNotEmpty
-                      ? DecorationImage(
-                          image: NetworkImage(job.companyLogo),
-                          fit: BoxFit.cover,
-                        )
-                      : null,
                 ),
-                child: job.companyLogo.isEmpty
-                    ? const Icon(Icons.business, color: AppColors.textSecondary, size: 20)
-                    : null,
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(8),
+                  child: job.companyLogo.isNotEmpty
+                      ? Image.network(
+                          job.companyLogo,
+                          fit: BoxFit.cover,
+                          errorBuilder: (context, error, stackTrace) =>
+                              const Icon(Icons.business, color: AppColors.textSecondary, size: 20),
+                        )
+                      : const Icon(Icons.business, color: AppColors.textSecondary, size: 20),
+                ),
               ),
               const SizedBox(width: 10),
               Expanded(

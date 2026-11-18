@@ -12,18 +12,26 @@ import 'package:sikarir/features/profile/presentation/profile_screen.dart';
 import 'package:sikarir/features/training/training.dart';
 import 'package:sikarir/features/profile/presentation/providers/peserta_provider.dart';
 
-void main() {
-  runApp(const SikarirApp());
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  final authProvider = AuthProvider();
+  await authProvider.checkAuthSession();
+
+  runApp(SikarirApp(authProvider: authProvider));
 }
 
 class SikarirApp extends StatelessWidget {
-  const SikarirApp({super.key});
+  final AuthProvider? authProvider;
+
+  const SikarirApp({super.key, this.authProvider});
 
   @override
   Widget build(BuildContext context) {
     return MultiProvider(
       providers: [
-        ChangeNotifierProvider(create: (_) => AuthProvider()),
+        ChangeNotifierProvider(
+          create: (_) => authProvider ?? (AuthProvider()..checkAuthSession()),
+        ),
         ChangeNotifierProvider(create: (_) => AttendanceProvider()),
         ChangeNotifierProvider(create: (_) => TrainingClassProvider()),
         ChangeNotifierProvider(create: (_) => TrainingScheduleProvider()),
@@ -33,13 +41,27 @@ class SikarirApp extends StatelessWidget {
         ChangeNotifierProvider(create: (_) => PesertaProvider()),
       ],
       builder: (context, child) {
-        final authProvider = context.watch<AuthProvider>();
+        final auth = context.watch<AuthProvider>();
+        if (auth.isCheckingAuth) {
+          return MaterialApp(
+            title: 'siKarir',
+            debugShowCheckedModeBanner: false,
+            theme: AppTheme.lightTheme,
+            home: const Scaffold(
+              backgroundColor: AppColors.background,
+              body: Center(
+                child: CircularProgressIndicator(color: AppColors.primary),
+              ),
+            ),
+          );
+        }
+
         return MaterialApp(
           title: 'siKarir',
           debugShowCheckedModeBanner: false,
           theme: AppTheme.lightTheme,
           onGenerateRoute: AppRouter.onGenerateRoute,
-          home: authProvider.isAuthenticated
+          home: auth.isAuthenticated
               ? const MainNavigationScreen()
               : const LoginScreen(),
         );

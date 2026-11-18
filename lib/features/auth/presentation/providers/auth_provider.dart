@@ -9,11 +9,13 @@ class AuthProvider extends ChangeNotifier {
       : _authRepository = authRepository ?? AuthRepository();
 
   bool _isLoading = false;
+  bool _isCheckingAuth = true;
   bool _isAuthenticated = false;
   LoginResponse? _user;
   String? _errorMessage;
 
   bool get isLoading => _isLoading;
+  bool get isCheckingAuth => _isCheckingAuth;
   bool get isAuthenticated => _isAuthenticated;
   LoginResponse? get user => _user;
   String? get token => _user?.token;
@@ -37,6 +39,33 @@ class AuthProvider extends ChangeNotifier {
   void clearError() {
     _errorMessage = null;
     notifyListeners();
+  }
+
+  /// Memeriksa sesi login yang tersimpan di penyimpanan lokal (SharedPreferences)
+  Future<bool> checkAuthSession() async {
+    _isCheckingAuth = true;
+    notifyListeners();
+
+    try {
+      final savedUser = await _authRepository.getSavedSession();
+      if (savedUser != null && savedUser.token.isNotEmpty) {
+        _user = savedUser;
+        _isAuthenticated = true;
+        _isCheckingAuth = false;
+        notifyListeners();
+        return true;
+      }
+    } catch (e) {
+      if (kDebugMode) {
+        debugPrint("Error checkAuthSession: $e");
+      }
+    }
+
+    _user = null;
+    _isAuthenticated = false;
+    _isCheckingAuth = false;
+    notifyListeners();
+    return false;
   }
 
   Future<void> login(LoginRequest loginRequest) async {

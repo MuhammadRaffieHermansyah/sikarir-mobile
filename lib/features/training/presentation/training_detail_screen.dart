@@ -4,8 +4,14 @@ import 'package:sikarir/core/constants/app_theme.dart';
 import 'package:sikarir/features/auth/presentation/providers/auth_provider.dart';
 import 'package:sikarir/features/profile/presentation/pages/complete_profile_screen.dart';
 import 'package:sikarir/features/profile/presentation/providers/peserta_provider.dart';
+import 'package:sikarir/features/training/data/models/training_catalog_model.dart';
+import 'package:sikarir/features/training/presentation/pages/my_classes_screen.dart';
+import 'package:sikarir/features/training/presentation/providers/training_class_provider.dart';
 
 class TrainingDetailScreen extends StatefulWidget {
+  final TrainingCatalogModel? model;
+  final String? id;
+  final String? jadwalId;
   final String title;
   final String skkniCode;
   final String duration;
@@ -16,6 +22,9 @@ class TrainingDetailScreen extends StatefulWidget {
 
   const TrainingDetailScreen({
     super.key,
+    this.model,
+    this.id,
+    this.jadwalId,
     this.title = 'Desain Grafis & Visual Communication',
     this.skkniCode = 'SKKNI No. M.74100.001.02 • Lisensi BNSP Level 3',
     this.duration = '40 JP',
@@ -33,11 +42,30 @@ class TrainingDetailScreen extends StatefulWidget {
 class _TrainingDetailScreenState extends State<TrainingDetailScreen> {
   final List<bool> _expandedModules = [false, false, false, false, false];
 
+  String get title => widget.model?.title ?? widget.title;
+  String get skkniCode => widget.model?.skkniCode ?? widget.skkniCode;
+  String get duration => widget.model?.duration ?? widget.duration;
+  String get quota => widget.model != null
+      ? '${widget.model!.enrolledCount}/${widget.model!.quota} Peserta'
+      : widget.quota;
+  String get location => widget.model?.location ?? widget.location;
+  String get certification => widget.model?.badge ?? widget.certification;
+  String get imageUrl => widget.model?.imageUrl ?? widget.imageUrl;
+  String get instructor => widget.model?.instructor ?? 'Dimas Wicaksono, M.Ds.';
+  String get description => widget.model?.description ?? 'Pelatihan berbasis kompetensi industri berstandar SKKNI & BNSP.';
+  String get startDate => widget.model?.startDate ?? '01 September 2026';
+  String get endDate => widget.model?.endDate ?? '30 Oktober 2026';
+  String get targetJadwalId =>
+      (widget.model?.jadwalId != null && widget.model!.jadwalId!.isNotEmpty)
+          ? widget.model!.jadwalId!
+          : (widget.jadwalId ?? widget.id ?? widget.model?.id ?? '1');
+  String get targetPelatihanId => widget.model?.id ?? widget.id ?? '1';
+
   final List<Map<String, String>> _curriculums = [
     {
       'num': '01',
       'title': 'Prinsip Tata Letak & Grid System',
-      'subtitle': '✓ Terbuka • Pengantar Desain',
+      'subtitle': '✓ Terbuka • Pengantar Standar SKKNI',
     },
     {
       'num': '02',
@@ -52,18 +80,61 @@ class _TrainingDetailScreenState extends State<TrainingDetailScreen> {
     {
       'num': '04',
       'title': 'Portofolio Proyek Industri Nyata',
-      'subtitle': 'Brief Langsung dari UMKM & Startup',
+      'subtitle': 'Brief Langsung dari UMKM & Startup Mitra',
     },
     {
       'num': '05',
       'title': 'Uji Kompetensi Asesor BNSP',
-      'subtitle': 'Sertifikasi Akhir Kelulusan',
+      'subtitle': 'Sertifikasi Akhir Kelulusan Resmi',
     },
   ];
 
   Future<void> _handleDaftarPelatihan() async {
-    final pesertaProvider = context.read<PesertaProvider>();
     final authProvider = context.read<AuthProvider>();
+    if (!authProvider.isAuthenticated) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Silakan login terlebih dahulu untuk mendaftar pelatihan.'),
+          backgroundColor: AppColors.orange,
+        ),
+      );
+      return;
+    }
+
+    final trainingProvider = context.read<TrainingClassProvider>();
+    final isEnrolled = widget.model?.isEnrolled ??
+        trainingProvider.isUserEnrolled(targetPelatihanId, targetJadwalId);
+    if (isEnrolled) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: const Text('Anda sudah terdaftar di pelatihan ini.'),
+          backgroundColor: AppColors.primary,
+          action: SnackBarAction(
+            label: 'Buka Kelas',
+            textColor: Colors.white,
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => const MyClassesScreen()),
+              );
+            },
+          ),
+        ),
+      );
+      return;
+    }
+
+    if (widget.model != null && widget.model!.remainingQuota <= 0) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Maaf, kuota pelatihan ini sudah penuh.'),
+          backgroundColor: Colors.red,
+        ),
+      );
+      return;
+    }
+
+    final pesertaProvider = context.read<PesertaProvider>();
     final token = authProvider.user?.token;
 
     if (pesertaProvider.profile == null) {
@@ -126,7 +197,7 @@ class _TrainingDetailScreenState extends State<TrainingDetailScreen> {
             ),
             const SizedBox(height: 10),
             Text(
-              'Untuk dapat mendaftar pelatihan "${widget.title}", Anda wajib melengkapi data diri resmi (No. KK, WhatsApp, Alamat, dan Pendidikan Terakhir).',
+              'Untuk dapat mendaftar pelatihan "$title", Anda wajib melengkapi data diri resmi (No. KK, WhatsApp, Alamat, dan Pendidikan Terakhir).',
               textAlign: TextAlign.center,
               style: const TextStyle(
                 fontSize: 13,
@@ -260,7 +331,7 @@ class _TrainingDetailScreenState extends State<TrainingDetailScreen> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        widget.title,
+                        title,
                         style: const TextStyle(
                           fontSize: 14,
                           fontWeight: FontWeight.w800,
@@ -272,11 +343,25 @@ class _TrainingDetailScreenState extends State<TrainingDetailScreen> {
                         children: [
                           const Icon(Icons.timer_outlined, size: 14, color: AppColors.textSecondary),
                           const SizedBox(width: 4),
-                          Text(widget.duration, style: const TextStyle(fontSize: 11, color: AppColors.textSecondary)),
+                          Text(duration, style: const TextStyle(fontSize: 11, color: AppColors.textSecondary)),
                           const SizedBox(width: 12),
                           const Icon(Icons.people_outline_rounded, size: 14, color: AppColors.textSecondary),
                           const SizedBox(width: 4),
-                          Text(widget.quota, style: const TextStyle(fontSize: 11, color: AppColors.textSecondary)),
+                          Text(quota, style: const TextStyle(fontSize: 11, color: AppColors.textSecondary)),
+                        ],
+                      ),
+                      const SizedBox(height: 6),
+                      Row(
+                        children: [
+                          const Icon(Icons.location_on_outlined, size: 14, color: AppColors.textSecondary),
+                          const SizedBox(width: 4),
+                          Expanded(
+                            child: Text(
+                              location,
+                              style: const TextStyle(fontSize: 11, color: AppColors.textSecondary),
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
                         ],
                       ),
                     ],
@@ -290,8 +375,10 @@ class _TrainingDetailScreenState extends State<TrainingDetailScreen> {
                           setModalState(() => isSubmitting = true);
                           try {
                             final token = context.read<AuthProvider>().user?.token;
-                            await context.read<PesertaProvider>().enrollTraining(
-                              jadwalId: '1',
+                            final peserta = context.read<PesertaProvider>().profile;
+                            await context.read<TrainingClassProvider>().enrollTraining(
+                              jadwalId: targetJadwalId,
+                              pesertaId: peserta?.idPeserta,
                               token: token,
                             );
                             if (mounted) {
@@ -302,7 +389,13 @@ class _TrainingDetailScreenState extends State<TrainingDetailScreen> {
                             setModalState(() => isSubmitting = false);
                             if (mounted) {
                               Navigator.pop(ctx);
-                              _showRegistrationSuccess();
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(
+                                  content: Text(e.toString().replaceFirst('Exception: ', '')),
+                                  backgroundColor: Colors.red.shade700,
+                                  behavior: SnackBarBehavior.floating,
+                                ),
+                              );
                             }
                           }
                         },
@@ -384,7 +477,7 @@ class _TrainingDetailScreenState extends State<TrainingDetailScreen> {
             ),
             const SizedBox(height: 8),
             Text(
-              'Data diri Anda terverifikasi dan Anda telah terdaftar di kelas ${widget.title}. Silakan cek email & notifikasi berkala untuk jadwal tes online.',
+              'Data pendaftaran Anda telah tercatat dan Anda resmi terdaftar pada kelas "$title". Silakan pantau perkembangan pembelajaran di menu Kelas Saya.',
               textAlign: TextAlign.center,
               style: const TextStyle(
                 fontSize: 13,
@@ -396,8 +489,19 @@ class _TrainingDetailScreenState extends State<TrainingDetailScreen> {
             SizedBox(
               width: double.infinity,
               height: 48,
-              child: ElevatedButton(
-                onPressed: () => Navigator.pop(context),
+              child: ElevatedButton.icon(
+                onPressed: () {
+                  Navigator.pop(context);
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (_) => const MyClassesScreen()),
+                  );
+                },
+                icon: const Icon(Icons.school_outlined, size: 20),
+                label: const Text(
+                  'Buka Kelas Pelatihan Saya',
+                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+                ),
                 style: ElevatedButton.styleFrom(
                   backgroundColor: AppColors.primary,
                   foregroundColor: Colors.white,
@@ -406,60 +510,40 @@ class _TrainingDetailScreenState extends State<TrainingDetailScreen> {
                   ),
                   elevation: 0,
                 ),
-                child: const Text(
-                  'Mengerti',
-                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
-                ),
               ),
             ),
-            const SizedBox(height: 12),
+            const SizedBox(height: 10),
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('Tutup', style: TextStyle(color: AppColors.textSecondary, fontWeight: FontWeight.w600)),
+            ),
           ],
         ),
       ),
     );
   }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppColors.background,
       appBar: AppBar(
-        backgroundColor: AppColors.background,
-        elevation: 0,
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back_rounded, color: AppColors.textPrimary),
-          onPressed: () => Navigator.pop(context),
-        ),
         title: const Text(
           'Detail Pelatihan',
           style: TextStyle(
             fontSize: 18,
-            fontWeight: FontWeight.w700,
+            fontWeight: FontWeight.w800,
             color: AppColors.textPrimary,
           ),
         ),
         actions: [
           IconButton(
-            icon: const Icon(Icons.share_outlined, color: AppColors.textPrimary),
+            icon: const Icon(Icons.share_outlined, color: AppColors.primary),
             onPressed: () {
               ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('Tautan pelatihan berhasil disalin!')),
+                SnackBar(content: Text('Tautan informasi $title siap dibagikan.')),
               );
             },
-          ),  
-          Container(
-            margin: const EdgeInsets.only(right: 16, left: 4),
-            width: 36,
-            height: 36,
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              border: Border.all(color: AppColors.cardBorder, width: 1.5),
-              image: const DecorationImage(
-                image: NetworkImage(
-                  'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80',
-                ),
-                fit: BoxFit.cover,
-              ),
-            ),
           ),
         ],
       ),
@@ -475,7 +559,7 @@ class _TrainingDetailScreenState extends State<TrainingDetailScreen> {
 
             // Title & Accreditation
             Text(
-              widget.title,
+              title,
               style: const TextStyle(
                 fontSize: 22,
                 fontWeight: FontWeight.w800,
@@ -494,7 +578,7 @@ class _TrainingDetailScreenState extends State<TrainingDetailScreen> {
                 const SizedBox(width: 6),
                 Expanded(
                   child: Text(
-                    widget.skkniCode,
+                    skkniCode,
                     style: const TextStyle(
                       fontSize: 12,
                       fontWeight: FontWeight.w600,
@@ -503,6 +587,17 @@ class _TrainingDetailScreenState extends State<TrainingDetailScreen> {
                   ),
                 ),
               ],
+            ),
+            const SizedBox(height: 14),
+
+            // Description
+            Text(
+              description,
+              style: const TextStyle(
+                fontSize: 13,
+                color: AppColors.textSecondary,
+                height: 1.45,
+              ),
             ),
             const SizedBox(height: 20),
 
@@ -579,96 +674,113 @@ class _TrainingDetailScreenState extends State<TrainingDetailScreen> {
       width: double.infinity,
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(18),
-        image: DecorationImage(
-          image: NetworkImage(widget.imageUrl),
-          fit: BoxFit.cover,
-        ),
       ),
-      child: Stack(
-        children: [
-          // Gradient dark overlay
-          Container(
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(18),
-              gradient: LinearGradient(
-                begin: Alignment.topCenter,
-                end: Alignment.bottomCenter,
-                colors: [
-                  Colors.black.withValues(alpha: 0.4),
-                  Colors.transparent,
-                  Colors.black.withValues(alpha: 0.6),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(18),
+        child: Stack(
+          children: [
+            SizedBox(
+              height: 190,
+              width: double.infinity,
+              child: Image.network(
+                imageUrl,
+                fit: BoxFit.cover,
+                errorBuilder: (_, __, ___) => Container(
+                  color: AppColors.mintBg,
+                  child: const Center(
+                    child: Icon(Icons.school, size: 48, color: AppColors.primary),
+                  ),
+                ),
+              ),
+            ),
+            // Gradient dark overlay
+            Container(
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topCenter,
+                  end: Alignment.bottomCenter,
+                  colors: [
+                    Colors.black.withValues(alpha: 0.4),
+                    Colors.transparent,
+                    Colors.black.withValues(alpha: 0.6),
+                  ],
+                ),
+              ),
+            ),
+            // Badges row
+            Positioned(
+              top: 12,
+              left: 12,
+              right: 12,
+              child: Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                    decoration: BoxDecoration(
+                      color: AppColors.mint.withValues(alpha: 0.95),
+                      borderRadius: BorderRadius.circular(20),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Container(
+                          width: 6,
+                          height: 6,
+                          decoration: const BoxDecoration(
+                            color: AppColors.mintDark,
+                            shape: BoxShape.circle,
+                          ),
+                        ),
+                        const SizedBox(width: 5),
+                        const Text(
+                          'PENDAFTARAN DIBUKA',
+                          style: TextStyle(
+                            fontSize: 10,
+                            fontWeight: FontWeight.w800,
+                            color: AppColors.mintDark,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                    decoration: BoxDecoration(
+                      color: AppColors.peachBg.withValues(alpha: 0.95),
+                      borderRadius: BorderRadius.circular(20),
+                    ),
+                    child: const Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(Icons.workspace_premium, size: 12, color: AppColors.peachText),
+                        SizedBox(width: 4),
+                        Text(
+                          'BEASISWA APBN 100%',
+                          style: TextStyle(
+                            fontSize: 10,
+                            fontWeight: FontWeight.w800,
+                            color: AppColors.peachText,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
                 ],
               ),
             ),
-          ),
-          // Badges row
-          Positioned(
-            top: 12,
-            left: 12,
-            right: 12,
-            child: Row(
-              children: [
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-                  decoration: BoxDecoration(
-                    color: AppColors.mint.withValues(alpha: 0.95),
-                    borderRadius: BorderRadius.circular(20),
-                  ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Container(
-                        width: 6,
-                        height: 6,
-                        decoration: const BoxDecoration(
-                          color: AppColors.mintDark,
-                          shape: BoxShape.circle,
-                        ),
-                      ),
-                      const SizedBox(width: 5),
-                      const Text(
-                        'PENDAFTARAN DIBUKA',
-                        style: TextStyle(
-                          fontSize: 10,
-                          fontWeight: FontWeight.w800,
-                          color: AppColors.mintDark,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                const SizedBox(width: 8),
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-                  decoration: BoxDecoration(
-                    color: AppColors.peachBg.withValues(alpha: 0.95),
-                    borderRadius: BorderRadius.circular(20),
-                  ),
-                  child: const Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Icon(Icons.workspace_premium, size: 12, color: AppColors.peachText),
-                      SizedBox(width: 4),
-                      Text(
-                        'BEASISWA APBN 100%',
-                        style: TextStyle(
-                          fontSize: 10,
-                          fontWeight: FontWeight.w800,
-                          color: AppColors.peachText,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
 
   Widget _buildQuickInfoGrid() {
+    final remaining = widget.model?.remainingQuota ?? 4;
+    final total = widget.model?.quota ?? 20;
+    final filled = widget.model?.enrolledCount ?? 16;
+    final progress = total > 0 ? (filled / total).clamp(0.0, 1.0) : 0.8;
+
     return Column(
       children: [
         Row(
@@ -679,8 +791,8 @@ class _TrainingDetailScreenState extends State<TrainingDetailScreen> {
                 iconColor: AppColors.mintDark,
                 iconBg: AppColors.mintBg,
                 label: 'DURASI KURSUS',
-                value: widget.duration,
-                subvalue: '5 Minggu Intensif',
+                value: duration,
+                subvalue: 'Intensif Standar SKKNI',
               ),
             ),
             const SizedBox(width: 12),
@@ -690,9 +802,9 @@ class _TrainingDetailScreenState extends State<TrainingDetailScreen> {
                 iconColor: AppColors.orangeText,
                 iconBg: AppColors.orangeLight,
                 label: 'KUOTA TERISI',
-                tag: 'Sisa 4',
-                value: widget.quota,
-                progress: 0.8,
+                tag: 'Sisa $remaining',
+                value: quota,
+                progress: progress,
               ),
             ),
           ],
@@ -706,8 +818,8 @@ class _TrainingDetailScreenState extends State<TrainingDetailScreen> {
                 iconColor: AppColors.primary,
                 iconBg: AppColors.mintBg,
                 label: 'LOKASI BENGKEL',
-                value: widget.location,
-                subvalue: 'BLK Jember',
+                value: location.split(',').first,
+                subvalue: location.contains(',') ? location.split(',').last.trim() : 'BLK Resmi',
               ),
             ),
             const SizedBox(width: 12),
@@ -717,7 +829,7 @@ class _TrainingDetailScreenState extends State<TrainingDetailScreen> {
                 iconColor: AppColors.mintDark,
                 iconBg: AppColors.mintBg,
                 label: 'SERTIFIKASI',
-                value: widget.certification,
+                value: certification,
                 subvalue: 'Standar Industri',
               ),
             ),
@@ -790,10 +902,12 @@ class _TrainingDetailScreenState extends State<TrainingDetailScreen> {
           Text(
             value,
             style: const TextStyle(
-              fontSize: 16,
+              fontSize: 15,
               fontWeight: FontWeight.w800,
               color: AppColors.textPrimary,
             ),
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
           ),
           if (subvalue != null) ...[
             const SizedBox(height: 2),
@@ -803,6 +917,8 @@ class _TrainingDetailScreenState extends State<TrainingDetailScreen> {
                 fontSize: 11,
                 color: AppColors.textSecondary,
               ),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
             ),
           ],
           if (progress != null) ...[
@@ -845,11 +961,11 @@ class _TrainingDetailScreenState extends State<TrainingDetailScreen> {
             ),
           ),
           const SizedBox(width: 12),
-          const Expanded(
+          Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
+                const Text(
                   'JADWAL KELAS TATAP MUKA',
                   style: TextStyle(
                     fontSize: 10,
@@ -858,17 +974,17 @@ class _TrainingDetailScreenState extends State<TrainingDetailScreen> {
                     letterSpacing: 0.3,
                   ),
                 ),
-                SizedBox(height: 2),
+                const SizedBox(height: 2),
                 Text(
-                  '18 Sep – 30 Sep 2026',
-                  style: TextStyle(
+                  endDate.isNotEmpty ? '$startDate – $endDate' : startDate,
+                  style: const TextStyle(
                     fontSize: 13,
                     fontWeight: FontWeight.w800,
                     color: AppColors.textPrimary,
                   ),
                 ),
-                SizedBox(height: 2),
-                Text(
+                const SizedBox(height: 2),
+                const Text(
                   'Senin - Jumat • 08:00 - 15:30 WIB',
                   style: TextStyle(
                     fontSize: 11,
@@ -903,13 +1019,11 @@ class _TrainingDetailScreenState extends State<TrainingDetailScreen> {
             height: 48,
             decoration: BoxDecoration(
               shape: BoxShape.circle,
+              color: AppColors.mintBg,
               border: Border.all(color: AppColors.cardBorder, width: 1.5),
-              image: const DecorationImage(
-                image: NetworkImage(
-                  'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150&auto=format&fit=crop&q=80',
-                ),
-                fit: BoxFit.cover,
-              ),
+            ),
+            child: const Center(
+              child: Icon(Icons.person, color: AppColors.primary, size: 28),
             ),
           ),
           const SizedBox(width: 12),
@@ -918,17 +1032,21 @@ class _TrainingDetailScreenState extends State<TrainingDetailScreen> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Row(
-                  children: const [
-                    Text(
-                      'Budi Santoso, S.Sn',
-                      style: TextStyle(
-                        fontSize: 14,
-                        fontWeight: FontWeight.w800,
-                        color: AppColors.textPrimary,
+                  children: [
+                    Expanded(
+                      child: Text(
+                        instructor,
+                        style: const TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w800,
+                          color: AppColors.textPrimary,
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
                       ),
                     ),
-                    SizedBox(width: 4),
-                    Icon(
+                    const SizedBox(width: 4),
+                    const Icon(
                       Icons.check_circle,
                       color: AppColors.primary,
                       size: 16,
@@ -937,7 +1055,7 @@ class _TrainingDetailScreenState extends State<TrainingDetailScreen> {
                 ),
                 const SizedBox(height: 2),
                 const Text(
-                  'Master Trainer Asosiasi Desain Grafis Indonesia..',
+                  'Instruktur Terverifikasi Asosiasi Kejuruan & BNSP',
                   style: TextStyle(
                     fontSize: 11,
                     color: AppColors.textSecondary,
@@ -948,19 +1066,6 @@ class _TrainingDetailScreenState extends State<TrainingDetailScreen> {
               ],
             ),
           ),
-          Container(
-            width: 32,
-            height: 32,
-            decoration: BoxDecoration(
-              color: AppColors.background,
-              shape: BoxShape.circle,
-            ),
-            child: const Icon(
-              Icons.chevron_right_rounded,
-              color: AppColors.textSecondary,
-              size: 20,
-            ),
-          ),
         ],
       ),
     );
@@ -968,12 +1073,13 @@ class _TrainingDetailScreenState extends State<TrainingDetailScreen> {
 
   Widget _buildCurriculumList() {
     return Column(
-      children: List.generate(_curriculums.length, (index) {
-        final item = _curriculums[index];
+      children: _curriculums.asMap().entries.map((entry) {
+        final index = entry.key;
+        final item = entry.value;
         final isExpanded = _expandedModules[index];
 
         return Container(
-          margin: const EdgeInsets.only(bottom: 10),
+          margin: const EdgeInsets.only(bottom: 8),
           decoration: BoxDecoration(
             color: Colors.white,
             borderRadius: BorderRadius.circular(14),
@@ -992,16 +1098,16 @@ class _TrainingDetailScreenState extends State<TrainingDetailScreen> {
                 width: 34,
                 height: 34,
                 decoration: BoxDecoration(
-                  color: AppColors.mintBg,
+                  color: isExpanded ? AppColors.mintDark : AppColors.mintBg,
                   borderRadius: BorderRadius.circular(10),
                 ),
                 child: Center(
                   child: Text(
                     item['num']!,
-                    style: const TextStyle(
-                      fontSize: 13,
+                    style: TextStyle(
+                      fontSize: 12,
                       fontWeight: FontWeight.w800,
-                      color: AppColors.mintDark,
+                      color: isExpanded ? Colors.white : AppColors.mintDark,
                     ),
                   ),
                 ),
@@ -1010,31 +1116,25 @@ class _TrainingDetailScreenState extends State<TrainingDetailScreen> {
                 item['title']!,
                 style: const TextStyle(
                   fontSize: 13,
-                  fontWeight: FontWeight.w700,
+                  fontWeight: FontWeight.w800,
                   color: AppColors.textPrimary,
                 ),
               ),
               subtitle: Text(
                 item['subtitle']!,
-                style: TextStyle(
+                style: const TextStyle(
                   fontSize: 11,
-                  color: index == 0 ? AppColors.mintDark : AppColors.textSecondary,
-                  fontWeight: index == 0 ? FontWeight.w600 : FontWeight.normal,
+                  color: AppColors.textSecondary,
                 ),
-              ),
-              trailing: Icon(
-                isExpanded ? Icons.expand_less : Icons.expand_more,
-                color: AppColors.textSecondary,
-                size: 20,
               ),
               children: [
                 Padding(
                   padding: const EdgeInsets.fromLTRB(16, 0, 16, 14),
                   child: Text(
-                    'Materi komprehensif berstandar SKKNI dengan penilaian langsung dari instruktur tersertifikasi BNSP.',
+                    'Materi ini mencakup standar kompetensi kerja nasional, sesi praktikum laboratorium terarah, serta evaluasi berbasis asesmen instruktur industri.',
                     style: TextStyle(
-                      fontSize: 12,
-                      color: AppColors.textSecondary.withValues(alpha: 0.9),
+                      fontSize: 11.5,
+                      color: Colors.grey.shade600,
                       height: 1.4,
                     ),
                   ),
@@ -1043,16 +1143,17 @@ class _TrainingDetailScreenState extends State<TrainingDetailScreen> {
             ),
           ),
         );
-      }),
+      }).toList(),
     );
   }
 
   Widget _buildFacilitiesCard() {
     final facilities = [
-      {'icon': Icons.payments_outlined, 'title': 'Uang Saku Harian'},
-      {'icon': Icons.accessibility_new_rounded, 'title': 'Seragam Bengkel'},
-      {'icon': Icons.restaurant_outlined, 'title': 'Makan Siang & Snack'},
-      {'icon': Icons.verified_outlined, 'title': 'Sertifikat Kemnaker'},
+      'Uang saku harian selama pelatihan',
+      'Modul belajar resmi & toolkit praktikum',
+      'Seragam pelatihan & perlengkapan safety (APD)',
+      'Sertifikat pelatihan Kemnaker RI & uji BNSP',
+      'Peluang penyaluran kerja ke mitra industri',
     ];
 
     return Container(
@@ -1062,52 +1163,38 @@ class _TrainingDetailScreenState extends State<TrainingDetailScreen> {
         borderRadius: BorderRadius.circular(16),
         border: Border.all(color: AppColors.cardBorder),
       ),
-      child: GridView.builder(
-        shrinkWrap: true,
-        physics: const NeverScrollableScrollPhysics(),
-        gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-          crossAxisCount: 2,
-          mainAxisSpacing: 14,
-          crossAxisSpacing: 14,
-          childAspectRatio: 3.2,
-        ),
-        itemCount: facilities.length,
-        itemBuilder: (context, index) {
-          final f = facilities[index];
-          return Row(
-            children: [
-              Container(
-                padding: const EdgeInsets.all(8),
-                decoration: BoxDecoration(
-                  color: AppColors.mintBg,
-                  borderRadius: BorderRadius.circular(10),
-                ),
-                child: Icon(
-                  f['icon'] as IconData,
-                  color: AppColors.mintDark,
-                  size: 18,
-                ),
-              ),
-              const SizedBox(width: 10),
-              Expanded(
-                child: Text(
-                  f['title'] as String,
-                  style: const TextStyle(
-                    fontSize: 12,
-                    fontWeight: FontWeight.w600,
-                    color: AppColors.textPrimary,
+      child: Column(
+        children: facilities.map((f) {
+          return Padding(
+            padding: const EdgeInsets.symmetric(vertical: 6),
+            child: Row(
+              children: [
+                const Icon(Icons.check_circle_outline, color: AppColors.mintDark, size: 18),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Text(
+                    f,
+                    style: const TextStyle(
+                      fontSize: 12.5,
+                      color: AppColors.textPrimary,
+                      fontWeight: FontWeight.w500,
+                    ),
                   ),
-                  maxLines: 2,
                 ),
-              ),
-            ],
+              ],
+            ),
           );
-        },
+        }).toList(),
       ),
     );
   }
 
   Widget _buildBottomActionBar() {
+    final trainingProvider = context.watch<TrainingClassProvider>();
+    final isEnrolled = widget.model?.isEnrolled ??
+        trainingProvider.isUserEnrolled(targetPelatihanId, targetJadwalId);
+    final isFull = (widget.model != null && widget.model!.remainingQuota <= 0);
+
     return Container(
       padding: const EdgeInsets.fromLTRB(20, 12, 20, 24),
       decoration: BoxDecoration(
@@ -1122,11 +1209,11 @@ class _TrainingDetailScreenState extends State<TrainingDetailScreen> {
       ),
       child: Row(
         children: [
-          Column(
+          const Column(
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Text(
+              Text(
                 'BIAYA KURSUS',
                 style: TextStyle(
                   fontSize: 10,
@@ -1135,38 +1222,17 @@ class _TrainingDetailScreenState extends State<TrainingDetailScreen> {
                   letterSpacing: 0.3,
                 ),
               ),
-              const SizedBox(height: 2),
-              Row(
-                children: [
-                  const Text(
-                    'Rp 0',
-                    style: TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.w800,
-                      color: AppColors.primary,
-                    ),
-                  ),
-                  const SizedBox(width: 6),
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                    decoration: BoxDecoration(
-                      color: AppColors.mint,
-                      borderRadius: BorderRadius.circular(6),
-                    ),
-                    child: const Text(
-                      '100% Subsidi',
-                      style: TextStyle(
-                        fontSize: 9,
-                        fontWeight: FontWeight.w700,
-                        color: AppColors.mintDark,
-                      ),
-                    ),
-                  ),
-                ],
+              SizedBox(height: 2),
+              Text(
+                '100% GRATIS',
+                style: TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w900,
+                  color: AppColors.mintDark,
+                ),
               ),
-              const SizedBox(height: 1),
-              const Text(
-                'Dibiayai APBN',
+              Text(
+                'Disubsidi APBN',
                 style: TextStyle(
                   fontSize: 10,
                   color: AppColors.textSecondary,
@@ -1179,9 +1245,18 @@ class _TrainingDetailScreenState extends State<TrainingDetailScreen> {
             child: SizedBox(
               height: 48,
               child: ElevatedButton(
-                onPressed: _handleDaftarPelatihan,
+                onPressed: isEnrolled
+                    ? () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(builder: (_) => const MyClassesScreen()),
+                        );
+                      }
+                    : (isFull ? null : _handleDaftarPelatihan),
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: AppColors.primary,
+                  backgroundColor: isEnrolled
+                      ? AppColors.mintDark
+                      : (isFull ? Colors.grey.shade400 : AppColors.primary),
                   foregroundColor: Colors.white,
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(12),
@@ -1189,26 +1264,25 @@ class _TrainingDetailScreenState extends State<TrainingDetailScreen> {
                   elevation: 0,
                   padding: const EdgeInsets.symmetric(horizontal: 14),
                 ),
-                child: const Row(
+                child: Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
+                    Icon(
+                      isEnrolled
+                          ? Icons.check_circle_rounded
+                          : (isFull ? Icons.block_rounded : Icons.app_registration_rounded),
+                      size: 18,
+                    ),
+                    const SizedBox(width: 8),
                     Text(
-                      'Daftar Pelatihan',
-                      style: TextStyle(
+                      isEnrolled
+                          ? 'Sudah Terdaftar (Lihat Kelas)'
+                          : (isFull ? 'Kuota Penuh' : 'Daftar Sekarang'),
+                      style: const TextStyle(
                         fontSize: 13,
                         fontWeight: FontWeight.bold,
                       ),
                     ),
-                    SizedBox(width: 4),
-                    Text(
-                      'Sekarang',
-                      style: TextStyle(
-                        fontSize: 13,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                    SizedBox(width: 6),
-                    Icon(Icons.arrow_forward_rounded, size: 16),
                   ],
                 ),
               ),

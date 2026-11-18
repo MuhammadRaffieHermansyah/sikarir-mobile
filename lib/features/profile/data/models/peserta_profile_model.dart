@@ -1,4 +1,4 @@
-import 'package:sikarir/core/utils/file_url.dart';
+import 'package:sikarir/core/storage/utils/file_url.dart';
 
 class PesertaProfile {
   final String idPeserta;

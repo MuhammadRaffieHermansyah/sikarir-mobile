@@ -1,6 +1,7 @@
 class TrainingClassModel {
   final String id;
   final String pelatihanId;
+  final String jadwalId;
   final String title;
   final String code;
   final String category;
@@ -18,6 +19,7 @@ class TrainingClassModel {
   TrainingClassModel({
     required this.id,
     required this.pelatihanId,
+    this.jadwalId = '',
     required this.title,
     required this.code,
     required this.category,
@@ -52,6 +54,7 @@ class TrainingClassModel {
     return TrainingClassModel(
       id: (map['id_kelas'] ?? map['id'] ?? map['_id'] ?? '').toString(),
       pelatihanId: (map['pelatihan_id'] ?? jadwal?['id_pelatihan'] ?? '').toString(),
+      jadwalId: (map['id_jadwal'] ?? jadwal?['id_jadwal'] ?? '').toString(),
       title: (pelatihan?['nama_pelatihan'] ?? map['nama_kelas'] ?? map['nama'] ?? map['title'] ?? 'Kelas Pelatihan').toString(),
       code: (map['kode_kelas'] ?? 'BLK-${jadwal?['id_jadwal'] ?? '2026'}').toString(),
       category: (pelatihan?['kategori'] ?? map['kategori'] ?? map['kejuruan'] ?? 'Pelatihan Kejuruan').toString(),
@@ -72,6 +75,7 @@ class TrainingClassModel {
     return {
       'id': id,
       'pelatihan_id': pelatihanId,
+      'id_jadwal': jadwalId,
       'nama_kelas': title,
       'kode_kelas': code,
       'kategori': category,
