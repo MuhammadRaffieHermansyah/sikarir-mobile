@@ -12,10 +12,12 @@ class PesertaProvider extends ChangeNotifier {
   bool _isLoading = false;
   PesertaProfile? _profile;
   String? _errorMessage;
+  int _photoVersion = 0;
 
   bool get isLoading => _isLoading;
   PesertaProfile? get profile => _profile;
   String? get errorMessage => _errorMessage;
+  int get photoVersion => _photoVersion;
 
   bool get isProfileComplete => _profile?.isProfileComplete ?? false;
 
@@ -26,7 +28,10 @@ class PesertaProvider extends ChangeNotifier {
 
     try {
       final res = await service.getMyProfile(token);
-      _profile = res;
+      if (res != null) {
+        _profile = res;
+        _photoVersion++;
+      }
     } catch (e) {
       _errorMessage = e.toString().replaceFirst('Exception: ', '');
     } finally {
@@ -47,6 +52,12 @@ class PesertaProvider extends ChangeNotifier {
     try {
       final updated = await service.updateMyProfile(data, token, pasFotoFile);
       _profile = updated;
+
+      // Ambil ulang profil dari server supaya foto terbaru ikut masuk
+      final fresh = await service.getMyProfile(token);
+      if (fresh != null) _profile = fresh;
+
+      _photoVersion++;
       return true;
     } catch (e) {
       _errorMessage = e.toString().replaceFirst('Exception: ', '');

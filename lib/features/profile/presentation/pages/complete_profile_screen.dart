@@ -84,7 +84,7 @@ class _CompleteProfileScreenState extends State<CompleteProfileScreen> {
         }
         _isDisabilitas = profile.isDisabilitas;
         _statusPendidikan = profile.statusPendidikan;
-        _pasFotoUrl = profile.pasFoto;
+        _pasFotoUrl = profile.pasFotoUrl;
         _initialized = true;
       });
     }

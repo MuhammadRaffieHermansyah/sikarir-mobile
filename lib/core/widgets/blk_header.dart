@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:sikarir/core/constants/app_theme.dart';
+import 'package:sikarir/features/profile/presentation/widgets/profile_avatar.dart';
 
 class BlkHeader extends StatelessWidget {
   final String sectionTitle;
@@ -107,20 +108,7 @@ class BlkHeader extends StatelessWidget {
           // User Avatar
           GestureDetector(
             onTap: onProfileTap,
-            child: Container(
-              width: 40,
-              height: 40,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                border: Border.all(color: AppColors.cardBorder, width: 1.5),
-                image: const DecorationImage(
-                  image: NetworkImage(
-                    'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80',
-                  ),
-                  fit: BoxFit.cover,
-                ),
-              ),
-            ),
+            child: const ProfileAvatar(size: 40),
           ),
         ],
       ),
