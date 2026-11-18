@@ -15,6 +15,7 @@ class CertificateProvider extends ChangeNotifier {
   bool get isLoading => _isLoading;
   List<CertificateModel> get certificates => _certificates;
   String? get errorMessage => _errorMessage;
+  bool get hasCertificates => _certificates.isNotEmpty;
 
   Future<void> fetchCertificates([String? token]) async {
     _isLoading = true;
@@ -25,7 +26,7 @@ class CertificateProvider extends ChangeNotifier {
       final res = await repository.getCertificates(token);
       _certificates = res;
     } catch (e) {
-      _errorMessage = e.toString();
+      _errorMessage = e.toString().replaceFirst('Exception: ', '');
     } finally {
       _isLoading = false;
       notifyListeners();

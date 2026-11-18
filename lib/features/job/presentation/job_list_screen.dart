@@ -433,7 +433,6 @@ class _JobListScreenState extends State<JobListScreen> {
           GestureDetector(
             onTap: () {
               final token = context.read<AuthProvider>().user?.token;
-              print(token);
               context.read<JobProvider>().fetchJobs(token);
             },
             child: const Text(

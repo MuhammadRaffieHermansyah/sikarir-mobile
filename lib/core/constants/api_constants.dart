@@ -8,13 +8,32 @@ class ApiConstants {
   /// Base URL untuk file storage (gambar, dokumen, dll.)
   static const String storageUrl = 'http://$ipConfig:8000/storage';
 
-  /// Helper: jika [path] sudah URL lengkap, kembalikan apa adanya.
-  /// Jika path relatif (dari DB), prefix dengan storageUrl.
+  /// Helper: jika [path] sudah URL lengkap, kembalikan apa adanya (menyesuaikan host jika localhost).
+  /// Jika path relatif (dari DB), prefix dengan storageUrl dan bersihkan slash/storage duplikat.
   static String fullImageUrl(String path) {
-    if (path.startsWith('http://') || path.startsWith('https://')) {
-      return path;
+    if (path.isEmpty) return '';
+
+    String cleaned = path.trim();
+
+    // Normalisasi localhost/127.0.0.1 ke host ipConfig jika URL dibangkitkan dari backend Laravel
+    if (cleaned.contains('localhost:8000')) {
+      cleaned = cleaned.replaceAll('localhost:8000', '$ipConfig:8000');
+    } else if (cleaned.contains('127.0.0.1:8000')) {
+      cleaned = cleaned.replaceAll('127.0.0.1:8000', '$ipConfig:8000');
     }
-    return '$storageUrl/$path';
+
+    if (cleaned.startsWith('http://') || cleaned.startsWith('https://')) {
+      return cleaned;
+    }
+
+    if (cleaned.startsWith('/')) {
+      cleaned = cleaned.substring(1);
+    }
+    if (cleaned.startsWith('storage/')) {
+      cleaned = cleaned.substring(8);
+    }
+
+    return '$storageUrl/$cleaned';
   }
 
   static const String register = '$baseUrl/auth/register';

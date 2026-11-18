@@ -2,7 +2,16 @@ import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 import 'package:sikarir/core/constants/api_constants.dart';
+import 'package:sikarir/features/auth/data/services/auth_local_service.dart';
 import 'package:sikarir/features/certificate/data/models/certificate_model.dart';
+
+class CertificateApiException implements Exception {
+  final String message;
+  CertificateApiException(this.message);
+
+  @override
+  String toString() => message;
+}
 
 class CertificateService {
   final http.Client client;
@@ -20,18 +29,24 @@ class CertificateService {
     return headers;
   }
 
+  /// Mengambil daftar sertifikat yang diperoleh peserta dari endpoint API /api/sertifikat/me
   Future<List<CertificateModel>> getCertificates([String? token]) async {
-    try {
-      final endpoint = (token != null && token.isNotEmpty)
-          ? ApiConstants.sertifikatMe
-          : ApiConstants.sertifikasi;
+    token ??= await AuthLocalService().getToken();
 
+    if (token == null || token.isEmpty) {
+      if (kDebugMode) {
+        debugPrint('CertificateService: Token auth tidak tersedia.');
+      }
+      return [];
+    }
+
+    try {
       final response = await client
           .get(
-            Uri.parse(endpoint),
+            Uri.parse(ApiConstants.sertifikatMe),
             headers: _headers(token),
           )
-          .timeout(const Duration(seconds: 4));
+          .timeout(const Duration(seconds: 10));
 
       if (response.statusCode == 200) {
         final decoded = json.decode(response.body);
@@ -39,58 +54,35 @@ class CertificateService {
             ? decoded
             : (decoded['data'] is List
                 ? decoded['data']
-                : (decoded['sertifikasi'] is List
-                    ? decoded['sertifikasi']
-                    : (decoded['sertifikat'] is List ? decoded['sertifikat'] : [])));
+                : (decoded['sertifikat'] is List
+                    ? decoded['sertifikat']
+                    : (decoded['sertifikasi'] is List ? decoded['sertifikasi'] : [])));
 
-        if (list.isNotEmpty) {
-          return list.map((e) => CertificateModel.fromMap(e as Map<String, dynamic>)).toList();
+        if (kDebugMode) {
+          debugPrint('CertificateService: Berhasil memuat ${list.length} sertifikat dari API.');
         }
+
+        return list
+            .map((e) => CertificateModel.fromMap(e as Map<String, dynamic>))
+            .toList();
       }
+
+      if (response.statusCode == 401) {
+        throw CertificateApiException('Sesi login telah berakhir. Silakan login kembali.');
+      }
+
+      throw CertificateApiException(
+        'Gagal memuat sertifikat (HTTP ${response.statusCode}). Silakan coba lagi.',
+      );
+    } on CertificateApiException {
+      rethrow;
     } catch (e) {
       if (kDebugMode) {
-        debugPrint("CertificateService API fallback: $e");
+        debugPrint('CertificateService.getCertificates error: $e');
       }
+      throw CertificateApiException(
+        'Tidak dapat terhubung ke server. Periksa koneksi internet Anda.',
+      );
     }
-
-    return _getFallbackCertificates();
-  }
-
-  List<CertificateModel> _getFallbackCertificates() {
-    return [
-      CertificateModel(
-        id: '1',
-        title: 'Junior Graphic Designer (Level 3)',
-        issuer: 'Badan Nasional Sertifikasi Profesi (BNSP)',
-        issueDate: '12 Jan 2026',
-        validUntil: '12 Jan 2029',
-        certificateNumber: 'BNSP-TIK-2026-88910',
-        status: 'aktif',
-        fileUrl: 'https://example.com/sertifikat-bnsp.pdf',
-        category: 'Bisnis & Desain Kreatif',
-      ),
-      CertificateModel(
-        id: '2',
-        title: 'Pelatihan Berbasis Kompetensi Desain Grafis',
-        issuer: 'Balai Latihan Kerja (BLK) Jember',
-        issueDate: '20 Des 2025',
-        validUntil: 'Seumur Hidup',
-        certificateNumber: 'BLK-JBR-PBK-7712',
-        status: 'aktif',
-        fileUrl: 'https://example.com/sertifikat-blk.pdf',
-        category: 'Pelatihan Kejuruan',
-      ),
-      CertificateModel(
-        id: '3',
-        title: 'Junior Web Programmer (Level 3)',
-        issuer: 'Lembaga Sertifikasi Profesi (LSP) Telematika',
-        issueDate: 'Dalam Proses Uji',
-        validUntil: '-',
-        certificateNumber: 'REG-PROSES-9912',
-        status: 'proses',
-        fileUrl: '',
-        category: 'Teknologi Informasi (TIK)',
-      ),
-    ];
   }
 }
