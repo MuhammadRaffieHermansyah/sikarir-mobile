@@ -46,12 +46,11 @@ class JobVacancyModel {
       cLogo = (mitra['logo_perusahaan'] ?? mitra['logo'] ?? mitra['logo_url'] ?? '').toString();
     }
     if (cLogo.isEmpty) {
-      cLogo = (map['logo_perusahaan'] ?? map['logo'] ?? map['logo_url'] ?? '').toString();
+      cLogo = (map['logo_perusahaan'] ?? map['logo'] ?? map['logo_url'] ?? map['gambar'] ?? map['gambar_url'] ?? '').toString();
     }
-    if (cLogo.isNotEmpty && !cLogo.startsWith('http')) {
-      cLogo = 'http://${ApiConstants.ipConfig}:8000/storage/$cLogo';
-    }
-    if (cLogo.isEmpty) {
+    if (cLogo.isNotEmpty) {
+      cLogo = ApiConstants.fullImageUrl(cLogo);
+    } else {
       cLogo = 'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=100&auto=format&fit=crop&q=80';
     }
 
