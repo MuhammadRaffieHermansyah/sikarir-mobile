@@ -139,6 +139,7 @@ class _TrainingDetailScreenState extends State<TrainingDetailScreen> {
 
     if (pesertaProvider.profile == null) {
       await pesertaProvider.fetchProfile(token);
+      if (!mounted) return;
     }
 
     if (!pesertaProvider.isProfileComplete) {
@@ -154,7 +155,7 @@ class _TrainingDetailScreenState extends State<TrainingDetailScreen> {
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
-      builder: (context) => Container(
+      builder: (sheetContext) => Container(
         padding: const EdgeInsets.all(24),
         decoration: const BoxDecoration(
           color: Colors.white,
@@ -211,14 +212,15 @@ class _TrainingDetailScreenState extends State<TrainingDetailScreen> {
               height: 48,
               child: ElevatedButton.icon(
                 onPressed: () {
-                  Navigator.pop(context);
+                  Navigator.pop(sheetContext);
                   Navigator.push(
                     context,
                     MaterialPageRoute(
                       builder: (_) => CompleteProfileScreen(
                         onCompleted: () {
-                          Navigator.pop(context);
-                          _handleDaftarPelatihan();
+                          // Setelah profil dilengkapi dan CompleteProfileScreen ditutup,
+                          // langsung jalankan kembali alur pendaftaran
+                          if (mounted) _handleDaftarPelatihan();
                         },
                       ),
                     ),
@@ -241,7 +243,7 @@ class _TrainingDetailScreenState extends State<TrainingDetailScreen> {
             ),
             const SizedBox(height: 10),
             TextButton(
-              onPressed: () => Navigator.pop(context),
+              onPressed: () => Navigator.pop(sheetContext),
               child: const Text(
                 'Nanti Saja',
                 style: TextStyle(color: AppColors.textSecondary, fontWeight: FontWeight.w600),
