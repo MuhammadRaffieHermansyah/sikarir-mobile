@@ -504,6 +504,7 @@ class _TrainingCatalogScreenState extends State<TrainingCatalogScreen> {
   }
 
   Widget _buildTrainingCard(TrainingCatalogModel item) {
+    print(item.imageUrl.toString());
     return Container(
       margin: const EdgeInsets.only(bottom: 16),
       decoration: BoxDecoration(

@@ -1,3 +1,4 @@
+import 'package:sikarir/core/constants/api_constants.dart';
 import 'package:sikarir/core/storage/utils/file_url.dart';
 
 class PesertaProfile {
@@ -55,7 +56,9 @@ class PesertaProfile {
       pendidikanSekarang: data['pendidikan_sekarang']?.toString(),
       statusPendidikan: data['status_pendidikan']?.toString(),
       jurusan: data['jurusan']?.toString(),
-      pasFoto: data['pas_foto']?.toString(),
+      pasFoto: data['pas_foto'] != null && data['pas_foto'].toString().isNotEmpty
+          ? ApiConstants.fullImageUrl(data['pas_foto'].toString())
+          : null,
       isDisabilitas: data['is_disabilitas'] == true ||
           data['is_disabilitas'].toString() == '1',
       jenisDisabilitas: data['jenis_disabilitas']?.toString(),

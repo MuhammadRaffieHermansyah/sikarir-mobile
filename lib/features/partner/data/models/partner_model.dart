@@ -1,3 +1,5 @@
+import 'package:sikarir/core/constants/api_constants.dart';
+
 class PartnerModel {
   final String id;
   final String name;
@@ -34,7 +36,13 @@ class PartnerModel {
       id: (map['id_mitra'] ?? map['id'] ?? map['_id'] ?? '').toString(),
       name: (map['nama_perusahaan'] ?? map['nama_mitra'] ?? map['nama'] ?? map['name'] ?? 'Mitra Industri BLK').toString(),
       industry: (map['bidang_usaha'] ?? map['sektor'] ?? map['bidang'] ?? map['industry'] ?? 'Teknologi & Manufaktur').toString(),
-      logo: (map['logo_perusahaan'] ?? map['logo'] ?? map['logo_url'] ?? 'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=100&auto=format&fit=crop&q=80').toString(),
+      logo: (() {
+        final rawLogo = (map['logo_perusahaan'] ?? map['logo'] ?? map['logo_url'] ?? '').toString();
+        if (rawLogo.isEmpty) {
+          return 'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=100&auto=format&fit=crop&q=80';
+        }
+        return ApiConstants.fullImageUrl(rawLogo);
+      })(),
       location: loc,
       description: (map['jenis_mitra'] ?? map['deskripsi'] ?? map['description'] ?? 'Mitra industri resmi balai latihan kerja.').toString(),
       activeVacancies: (map['lowongan_aktif'] ?? map['active_vacancies'] ?? 2) as int,

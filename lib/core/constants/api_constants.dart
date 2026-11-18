@@ -5,6 +5,18 @@ class ApiConstants {
 
   static const String baseUrl = 'http://$ipConfig:8000/api';
 
+  /// Base URL untuk file storage (gambar, dokumen, dll.)
+  static const String storageUrl = 'http://$ipConfig:8000/storage';
+
+  /// Helper: jika [path] sudah URL lengkap, kembalikan apa adanya.
+  /// Jika path relatif (dari DB), prefix dengan storageUrl.
+  static String fullImageUrl(String path) {
+    if (path.startsWith('http://') || path.startsWith('https://')) {
+      return path;
+    }
+    return '$storageUrl/$path';
+  }
+
   static const String register = '$baseUrl/auth/register';
   static const String login = '$baseUrl/auth/login';
   static const String logout = '$baseUrl/auth/logout';
