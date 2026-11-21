@@ -4,9 +4,11 @@ import 'package:sikarir/core/constants/app_theme.dart';
 import 'package:sikarir/core/widgets/blk_header.dart';
 import 'package:sikarir/features/attendance/attendance.dart';
 import 'package:sikarir/features/auth/auth.dart';
-import 'package:sikarir/features/training/training.dart';
+import 'package:sikarir/features/certificate/certificate.dart';
+import 'package:sikarir/features/job/job.dart';
 import 'package:sikarir/features/profile/presentation/pages/complete_profile_screen.dart';
 import 'package:sikarir/features/profile/presentation/providers/peserta_provider.dart';
+import 'package:sikarir/features/training/training.dart';
 
 class HomePage extends StatefulWidget {
   final VoidCallback? onNotificationTap;
@@ -29,12 +31,22 @@ class _HomePageState extends State<HomePage> {
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      final token = context.read<AuthProvider>().user?.token;
-      if (token != null && token.isNotEmpty) {
-        context.read<PesertaProvider>().fetchProfile(token);
-        context.read<AttendanceProvider>().fetchAttendanceData(token);
-      }
+      _refreshAllData();
     });
+  }
+
+  /// Memuat seluruh data beranda dari API secara paralel
+  Future<void> _refreshAllData() async {
+    final token = context.read<AuthProvider>().user?.token;
+    await Future.wait([
+      context.read<PesertaProvider>().fetchProfile(token),
+      context.read<AttendanceProvider>().fetchAttendanceData(token),
+      context.read<TrainingClassProvider>().fetchClasses(token),
+      context.read<TrainingClassProvider>().fetchCatalog(token),
+      context.read<TrainingScheduleProvider>().fetchSchedules(token),
+      context.read<JobProvider>().fetchJobs(token),
+      context.read<CertificateProvider>().fetchCertificates(token),
+    ]);
   }
 
   @override
@@ -50,39 +62,43 @@ class _HomePageState extends State<HomePage> {
               onProfileTap: widget.onProfileTap,
             ),
             Expanded(
-              child: ListView(
-                padding: const EdgeInsets.symmetric(horizontal: 16),
-                children: [
-                  // Greeting row
-_buildGreetingSection(),
-                  const SizedBox(height: 10),
-                  _buildProfileCompletionBanner(),
-                  const SizedBox(height: 14),
+              child: RefreshIndicator(
+                onRefresh: _refreshAllData,
+                color: AppColors.primary,
+                child: ListView(
+                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                  physics: const AlwaysScrollableScrollPhysics(),
+                  children: [
+                    const SizedBox(height: 4),
 
-                  // Hero Banner (Bangun skill untuk masa depanmu)
-                  _buildHeroBanner(),
-                  const SizedBox(height: 16),
+                    // Greeting Section (Dibersihkan dari duplikasi ikon lonceng notifikasi)
+                    _buildGreetingSection(),
+                    const SizedBox(height: 12),
 
-                  // 4 Quick Stats
-                  _buildStatsRow(),
-                  const SizedBox(height: 20),
+                    // Banner Lengkapi Data Diri (tampil jika data diri belum lengkap)
+                    _buildProfileCompletionBanner(),
 
-                  // Section: Pelatihan Saya
-                  _buildMyTrainingSection(),
-                  const SizedBox(height: 20),
+                    // Ringkasan Statistik Cepat (4 metrik live dari API)
+                    _buildStatsRow(),
+                    const SizedBox(height: 20),
 
-                  // Section: Jadwal Berikutnya
-                  _buildNextScheduleSection(),
-                  const SizedBox(height: 20),
+                    // Section: Pelatihan Saya (Data live kelas aktif atau ajakan mendaftar)
+                    _buildMyTrainingSection(),
+                    const SizedBox(height: 20),
 
-                  // Section: Pelatihan yang Mungkin Kamu Suka
-                  _buildRecommendedTrainingsSection(),
-                  const SizedBox(height: 20),
+                    // Section: Jadwal Pelatihan Terdekat
+                    _buildNextScheduleSection(),
+                    const SizedBox(height: 20),
 
-                  // Section: Peluang Kerja Untukmu
-                  _buildJobOpportunitiesSection(),
-                  const SizedBox(height: 24),
-                ],
+                    // Section: Rekomendasi Pelatihan (Katalog dari API)
+                    _buildRecommendedTrainingsSection(),
+                    const SizedBox(height: 20),
+
+                    // Section: Peluang Kerja Untukmu (Lowongan dari API)
+                    _buildJobOpportunitiesSection(),
+                    const SizedBox(height: 28),
+                  ],
+                ),
               ),
             ),
           ],
@@ -91,6 +107,7 @@ _buildGreetingSection(),
     );
   }
 
+  /// Banner pengingat kelengkapan profil jika belum 100%
   Widget _buildProfileCompletionBanner() {
     return Consumer<PesertaProvider>(
       builder: (context, provider, _) {
@@ -99,6 +116,7 @@ _buildGreetingSection(),
         }
 
         return Container(
+          margin: const EdgeInsets.only(bottom: 14),
           padding: const EdgeInsets.all(14),
           decoration: BoxDecoration(
             color: const Color(0xFFFFF7ED),
@@ -106,7 +124,7 @@ _buildGreetingSection(),
             border: Border.all(color: const Color(0xFFFFEDD5)),
             boxShadow: [
               BoxShadow(
-                color: Colors.orange.withOpacity(0.04),
+                color: Colors.orange.withValues(alpha: 0.04),
                 blurRadius: 8,
                 offset: const Offset(0, 2),
               ),
@@ -183,12 +201,19 @@ _buildGreetingSection(),
     );
   }
 
+  /// Greeting section yang ringkas dan bersih tanpa duplikasi tombol notifikasi
   Widget _buildGreetingSection() {
     final authProvider = context.watch<AuthProvider>();
-    final userName =
-        (authProvider.user != null && authProvider.user!.name.trim().isNotEmpty)
-        ? authProvider.user!.name
-        : 'Peserta SIKARIR';
+    final pesertaProvider = context.watch<PesertaProvider>();
+
+    final profileName = pesertaProvider.profile?.nama?.trim();
+    final authName = authProvider.user?.name.trim();
+
+    final userName = (profileName != null && profileName.isNotEmpty)
+        ? profileName
+        : ((authName != null && authName.isNotEmpty)
+            ? authName
+            : 'Peserta SIKARIR');
 
     return Row(
       children: [
@@ -208,11 +233,13 @@ _buildGreetingSection(),
               Text(
                 userName,
                 style: const TextStyle(
-                  fontSize: 19,
+                  fontSize: 20,
                   fontWeight: FontWeight.w800,
                   color: AppColors.textPrimary,
                   letterSpacing: -0.4,
                 ),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
               ),
               const SizedBox(height: 6),
               Container(
@@ -225,8 +252,8 @@ _buildGreetingSection(),
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     Container(
-                      width: 5,
-                      height: 5,
+                      width: 6,
+                      height: 6,
                       decoration: const BoxDecoration(
                         color: AppColors.mintDark,
                         shape: BoxShape.circle,
@@ -247,145 +274,29 @@ _buildGreetingSection(),
             ],
           ),
         ),
-        Container(
-          width: 44,
-          height: 44,
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(12),
-            border: Border.all(color: AppColors.cardBorder),
-          ),
-          child: Stack(
-            alignment: Alignment.center,
-            children: [
-              const Icon(
-                Icons.notifications_active_outlined,
-                color: AppColors.primary,
-                size: 22,
-              ),
-              Positioned(
-                top: 9,
-                right: 9,
-                child: Container(
-                  width: 7,
-                  height: 7,
-                  decoration: const BoxDecoration(
-                    color: AppColors.orange,
-                    shape: BoxShape.circle,
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ),
       ],
     );
   }
 
-  Widget _buildHeroBanner() {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(18),
-      decoration: BoxDecoration(
-        color: AppColors.primaryDark,
-        borderRadius: BorderRadius.circular(18),
-      ),
-      child: Stack(
-        children: [
-          // Background graphic rings
-          Positioned(
-            right: -25,
-            top: -20,
-            bottom: -20,
-            child: Opacity(
-              opacity: 0.12,
-              child: Container(
-                width: 140,
-                height: 140,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  border: Border.all(color: Colors.white, width: 20),
-                ),
-              ),
-            ),
-          ),
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const Text(
-                'AKREDITASI NASIONAL BNSP',
-                style: TextStyle(
-                  fontSize: 10,
-                  fontWeight: FontWeight.w800,
-                  color: AppColors.mint,
-                  letterSpacing: 0.6,
-                ),
-              ),
-              const SizedBox(height: 8),
-              const Text(
-                'Bangun skill untuk\nmasa depanmu.',
-                style: TextStyle(
-                  fontSize: 20,
-                  fontWeight: FontWeight.w800,
-                  color: Colors.white,
-                  height: 1.25,
-                  letterSpacing: -0.4,
-                ),
-              ),
-              const SizedBox(height: 8),
-              Text(
-                'Program pelatihan kejuruan berstandar BNSP siap mengantarkanmu langsung ke ekosistem dunia industri profesional.',
-                style: TextStyle(
-                  fontSize: 11,
-                  color: Colors.white.withValues(alpha: 0.82),
-                  height: 1.4,
-                ),
-              ),
-              const SizedBox(height: 14),
-              SizedBox(
-                height: 38,
-                child: ElevatedButton(
-                  onPressed: () {
-                    if (widget.onSwitchTab != null) {
-                      widget.onSwitchTab!(1); // Go to Pelatihan
-                    }
-                  },
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: AppColors.orange,
-                    foregroundColor: Colors.white,
-                    elevation: 0,
-                    padding: const EdgeInsets.symmetric(horizontal: 16),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                  ),
-                  child: const Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Text(
-                        'Jelajahi Pelatihan',
-                        style: TextStyle(
-                          fontSize: 12,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                      SizedBox(width: 6),
-                      Icon(Icons.arrow_forward_rounded, size: 14),
-                    ],
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-
+  /// 4 Statistik ringkas dengan angka aktual dari API Providers
   Widget _buildStatsRow() {
+    final trainingClassProvider = context.watch<TrainingClassProvider>();
+    final attendanceProvider = context.watch<AttendanceProvider>();
+    final certificateProvider = context.watch<CertificateProvider>();
+    final jobProvider = context.watch<JobProvider>();
+
+    final myClassesCount = trainingClassProvider.allClasses.length;
+    final certCount = certificateProvider.certificates.length;
+    final jobsCount = jobProvider.allJobs.length;
+
+    // Presensi persentase dihitung dari data aktual summary
+    final attendancePct = attendanceProvider.allAttendanceList.isNotEmpty
+        ? '${attendanceProvider.summary.attendancePercentage.toStringAsFixed(0)}%'
+        : '0%';
+
     final stats = [
       {
-        'val': '03',
+        'val': myClassesCount.toString().padLeft(2, '0'),
         'label': 'Pelatihan\nDiikuti',
         'color': AppColors.primary,
         'onTap': () => Navigator.push(
@@ -394,7 +305,7 @@ _buildGreetingSection(),
         ),
       },
       {
-        'val': '92%',
+        'val': attendancePct,
         'label': 'Presensi\nKelas',
         'color': AppColors.mintDark,
         'onTap': () => Navigator.push(
@@ -403,13 +314,13 @@ _buildGreetingSection(),
         ),
       },
       {
-        'val': '02',
+        'val': certCount.toString().padLeft(2, '0'),
         'label': 'Sertifikat\nResmi',
         'color': AppColors.primary,
         'onTap': () => widget.onSwitchTab?.call(3),
       },
       {
-        'val': '08',
+        'val': jobsCount.toString().padLeft(2, '0'),
         'label': 'Peluang\nKerja',
         'color': AppColors.orange,
         'onTap': () => widget.onSwitchTab?.call(2),
@@ -459,7 +370,11 @@ _buildGreetingSection(),
     );
   }
 
+  /// Section Pelatihan Saya: Menampilkan kelas aktif pengguna atau CTA daftar pelatihan
   Widget _buildMyTrainingSection() {
+    final trainingProvider = context.watch<TrainingClassProvider>();
+    final classes = trainingProvider.allClasses;
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -491,9 +406,9 @@ _buildGreetingSection(),
                   MaterialPageRoute(builder: (_) => const MyClassesScreen()),
                 );
               },
-              child: const Text(
-                'Lihat Kelas',
-                style: TextStyle(
+              child: Text(
+                classes.isNotEmpty ? 'Lihat Semua (${classes.length})' : 'Semua Kelas',
+                style: const TextStyle(
                   fontSize: 12,
                   fontWeight: FontWeight.w700,
                   color: AppColors.mintDark,
@@ -503,152 +418,196 @@ _buildGreetingSection(),
           ],
         ),
         const SizedBox(height: 12),
-        Container(
-          padding: const EdgeInsets.all(16),
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(16),
-            border: Border.all(color: AppColors.cardBorder),
+        if (trainingProvider.isLoading && classes.isEmpty)
+          Container(
+            height: 140,
+            alignment: Alignment.center,
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(color: AppColors.cardBorder),
+            ),
+            child: const CircularProgressIndicator(color: AppColors.primary),
+          )
+        else if (classes.isNotEmpty)
+          _buildActiveClassCard(classes.first)
+        else
+          _buildEmptyTrainingCard(),
+      ],
+    );
+  }
+
+  /// Kartu kelas aktif saat ini yang diambil dari API
+  Widget _buildActiveClassCard(TrainingClassModel activeClass) {
+    final progressPercent = (activeClass.progress * 100).toInt();
+
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: AppColors.cardBorder),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.02),
+            blurRadius: 8,
+            offset: const Offset(0, 2),
           ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 8,
-                      vertical: 4,
-                    ),
-                    decoration: BoxDecoration(
-                      color: AppColors.mint,
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                    child: const Text(
-                      'Sedang Berlangsung',
-                      style: TextStyle(
-                        fontSize: 10,
-                        fontWeight: FontWeight.w700,
-                        color: AppColors.mintDark,
-                      ),
-                    ),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                decoration: BoxDecoration(
+                  color: activeClass.status == 'berlangsung'
+                      ? AppColors.mint
+                      : AppColors.peachBg,
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Text(
+                  activeClass.status == 'berlangsung'
+                      ? 'Sedang Berlangsung'
+                      : activeClass.status == 'selesai'
+                          ? 'Selesai'
+                          : 'Akan Datang',
+                  style: TextStyle(
+                    fontSize: 10,
+                    fontWeight: FontWeight.w700,
+                    color: activeClass.status == 'berlangsung'
+                        ? AppColors.mintDark
+                        : AppColors.peachText,
                   ),
-                  Container(
-                    width: 32,
-                    height: 32,
-                    decoration: BoxDecoration(
-                      color: AppColors.mintBg,
-                      shape: BoxShape.circle,
-                    ),
-                    child: const Icon(
-                      Icons.palette_outlined,
-                      color: AppColors.mintDark,
-                      size: 18,
-                    ),
-                  ),
-                ],
+                ),
               ),
-              const SizedBox(height: 8),
-              const Text(
-                'Desain Grafis & UI/UX',
-                style: TextStyle(
-                  fontSize: 16,
+              Text(
+                activeClass.code,
+                style: const TextStyle(
+                  fontSize: 11,
+                  fontWeight: FontWeight.w700,
+                  color: AppColors.textSecondary,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 10),
+          Text(
+            activeClass.title,
+            style: const TextStyle(
+              fontSize: 16,
+              fontWeight: FontWeight.w800,
+              color: AppColors.textPrimary,
+            ),
+          ),
+          const SizedBox(height: 2),
+          Text(
+            activeClass.category,
+            style: const TextStyle(fontSize: 11, color: AppColors.textSecondary),
+          ),
+          const SizedBox(height: 12),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                'Sesi Selesai (${activeClass.completedSessions}/${activeClass.totalSessions})',
+                style: const TextStyle(
+                  fontSize: 11,
+                  color: AppColors.textSecondary,
+                ),
+              ),
+              Text(
+                '$progressPercent%',
+                style: const TextStyle(
+                  fontSize: 12,
                   fontWeight: FontWeight.w800,
                   color: AppColors.textPrimary,
                 ),
               ),
-              const SizedBox(height: 2),
-              const Text(
-                'Kejuruan Bisnis & Manajemen Kreatif',
-                style: TextStyle(fontSize: 11, color: AppColors.textSecondary),
+            ],
+          ),
+          const SizedBox(height: 6),
+          ClipRRect(
+            borderRadius: BorderRadius.circular(4),
+            child: LinearProgressIndicator(
+              value: activeClass.progress,
+              backgroundColor: AppColors.cardBorder,
+              valueColor: const AlwaysStoppedAnimation<Color>(AppColors.primary),
+              minHeight: 6,
+            ),
+          ),
+          const SizedBox(height: 12),
+          Row(
+            children: [
+              const Icon(
+                Icons.calendar_today_outlined,
+                size: 12,
+                color: AppColors.textSecondary,
               ),
-              const SizedBox(height: 12),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: const [
-                  Text(
-                    'Kelengkapan Kurikulum',
-                    style: TextStyle(
-                      fontSize: 11,
-                      color: AppColors.textSecondary,
-                    ),
-                  ),
-                  Text(
-                    '68%',
-                    style: TextStyle(
-                      fontSize: 12,
-                      fontWeight: FontWeight.w800,
-                      color: AppColors.textPrimary,
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 6),
-              ClipRRect(
-                borderRadius: BorderRadius.circular(4),
-                child: const LinearProgressIndicator(
-                  value: 0.68,
-                  backgroundColor: AppColors.cardBorder,
-                  valueColor: AlwaysStoppedAnimation<Color>(AppColors.primary),
-                  minHeight: 6,
-                ),
-              ),
-              const SizedBox(height: 12),
-              Row(
-                children: [
-                  Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 8,
-                      vertical: 4,
-                    ),
-                    decoration: BoxDecoration(
-                      color: AppColors.background,
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    child: const Row(
-                      children: [
-                        Icon(
-                          Icons.access_time,
-                          size: 12,
-                          color: AppColors.textSecondary,
-                        ),
-                        SizedBox(width: 4),
-                        Text(
-                          'Besok • 08:00 WIB',
-                          style: TextStyle(
-                            fontSize: 11,
-                            color: AppColors.textSecondary,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 6),
-              Row(
-                children: const [
-                  Icon(
-                    Icons.room_preferences_outlined,
-                    size: 13,
+              const SizedBox(width: 4),
+              Expanded(
+                child: Text(
+                  '${activeClass.startDate} - ${activeClass.endDate}',
+                  style: const TextStyle(
+                    fontSize: 11,
                     color: AppColors.textSecondary,
                   ),
-                  SizedBox(width: 4),
-                  Text(
-                    'Lab Komputer 02 • BLK Jember',
-                    style: TextStyle(
-                      fontSize: 11,
-                      color: AppColors.textSecondary,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+              const SizedBox(width: 8),
+              const Icon(
+                Icons.room_preferences_outlined,
+                size: 13,
+                color: AppColors.textSecondary,
+              ),
+              const SizedBox(width: 4),
+              Flexible(
+                child: Text(
+                  activeClass.room,
+                  style: const TextStyle(
+                    fontSize: 11,
+                    color: AppColors.textSecondary,
+                  ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 14),
+          Row(
+            children: [
+              Expanded(
+                child: OutlinedButton(
+                  onPressed: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => ClassDetailScreen(trainingClass: activeClass),
+                      ),
+                    );
+                  },
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: AppColors.primary,
+                    side: const BorderSide(color: AppColors.cardBorder),
+                    padding: const EdgeInsets.symmetric(vertical: 10),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(10),
                     ),
                   ),
-                ],
+                  child: const Text(
+                    'Detail Kelas',
+                    style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700),
+                  ),
+                ),
               ),
-              const SizedBox(height: 14),
-              SizedBox(
-                width: double.infinity,
-                height: 42,
+              const SizedBox(width: 8),
+              Expanded(
                 child: ElevatedButton.icon(
                   onPressed: () {
                     Navigator.push(
@@ -660,13 +619,14 @@ _buildGreetingSection(),
                   },
                   icon: const Icon(Icons.fingerprint_rounded, size: 16),
                   label: const Text(
-                    'Presensi & Modul Kelas',
+                    'Presensi',
                     style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
                   ),
                   style: ElevatedButton.styleFrom(
                     backgroundColor: AppColors.primary,
                     foregroundColor: Colors.white,
                     elevation: 0,
+                    padding: const EdgeInsets.symmetric(vertical: 10),
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(10),
                     ),
@@ -675,12 +635,84 @@ _buildGreetingSection(),
               ),
             ],
           ),
-        ),
-      ],
+        ],
+      ),
     );
   }
 
+  /// Tampilan ramah dan rapi jika peserta belum terdaftar di kelas manapun
+  Widget _buildEmptyTrainingCard() {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(18),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: AppColors.cardBorder),
+      ),
+      child: Column(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: AppColors.mintBg,
+              shape: BoxShape.circle,
+            ),
+            child: const Icon(
+              Icons.school_outlined,
+              color: AppColors.mintDark,
+              size: 28,
+            ),
+          ),
+          const SizedBox(height: 10),
+          const Text(
+            'Belum Ada Pelatihan Aktif',
+            style: TextStyle(
+              fontSize: 14,
+              fontWeight: FontWeight.w800,
+              color: AppColors.textPrimary,
+            ),
+          ),
+          const SizedBox(height: 4),
+          const Text(
+            'Tingkatkan keahlian kerja bersertifikasi BNSP dengan mendaftar pelatihan kejuruan di BLK Jember.',
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              fontSize: 11,
+              color: AppColors.textSecondary,
+              height: 1.35,
+            ),
+          ),
+          const SizedBox(height: 12),
+          ElevatedButton.icon(
+            onPressed: () {
+              widget.onSwitchTab?.call(1); // Pindah ke tab Pelatihan
+            },
+            icon: const Icon(Icons.search_rounded, size: 15),
+            label: const Text(
+              'Jelajahi Pelatihan',
+              style: TextStyle(fontSize: 11.5, fontWeight: FontWeight.bold),
+            ),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppColors.primary,
+              foregroundColor: Colors.white,
+              elevation: 0,
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 9),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(10),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// Section Jadwal Pelatihan terdekat yang diambil dari TrainingScheduleProvider
   Widget _buildNextScheduleSection() {
+    final scheduleProvider = context.watch<TrainingScheduleProvider>();
+    final schedules = scheduleProvider.allSchedules;
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -726,144 +758,176 @@ _buildGreetingSection(),
           ],
         ),
         const SizedBox(height: 12),
-        Container(
-          padding: const EdgeInsets.all(14),
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(16),
-            border: Border.all(color: AppColors.cardBorder),
-          ),
-          child: Row(
-            children: [
-              // Date box (18 SEP)
-              Container(
-                width: 48,
-                height: 54,
-                decoration: BoxDecoration(
-                  color: AppColors.peachBg,
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(
-                    color: AppColors.orange.withValues(alpha: 0.3),
+        if (schedules.isNotEmpty)
+          _buildScheduleItemCard(schedules.first)
+        else
+          Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(color: AppColors.cardBorder),
+            ),
+            child: Row(
+              children: const [
+                Icon(
+                  Icons.event_available_outlined,
+                  color: AppColors.textSecondary,
+                  size: 24,
+                ),
+                SizedBox(width: 12),
+                Expanded(
+                  child: Text(
+                    'Tidak ada sesi pelatihan dalam waktu dekat.',
+                    style: TextStyle(
+                      fontSize: 11.5,
+                      color: AppColors.textSecondary,
+                    ),
                   ),
                 ),
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: const [
-                    Text(
-                      '18',
-                      style: TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.w800,
-                        color: AppColors.peachText,
-                      ),
-                    ),
-                    Text(
-                      'SEP',
-                      style: TextStyle(
-                        fontSize: 9,
-                        fontWeight: FontWeight.w800,
-                        color: AppColors.peachText,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 6,
-                        vertical: 2,
-                      ),
-                      decoration: BoxDecoration(
-                        color: AppColors.peachBg,
-                        borderRadius: BorderRadius.circular(6),
-                      ),
-                      child: const Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Icon(
-                            Icons.access_time,
-                            size: 10,
-                            color: AppColors.peachText,
-                          ),
-                          SizedBox(width: 4),
-                          Text(
-                            '08:00 - 15:30 WIB',
-                            style: TextStyle(
-                              fontSize: 10,
-                              fontWeight: FontWeight.w700,
-                              color: AppColors.peachText,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                    const SizedBox(height: 4),
-                    const Text(
-                      'Desain Komunikasi Visual & Grafis',
-                      style: TextStyle(
-                        fontSize: 13,
-                        fontWeight: FontWeight.w800,
-                        color: AppColors.textPrimary,
-                      ),
-                    ),
-                    const SizedBox(height: 2),
-                    const Text(
-                      'Instruktur: Budi Santoso, S.Sn (Master Trainer BNSP)',
-                      style: TextStyle(
-                        fontSize: 11,
-                        color: AppColors.textSecondary,
-                      ),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  ],
-                ),
-              ),
-              Container(
-                width: 30,
-                height: 30,
-                decoration: BoxDecoration(
-                  color: AppColors.background,
-                  shape: BoxShape.circle,
-                ),
-                child: const Icon(
-                  Icons.chevron_right_rounded,
-                  color: AppColors.textSecondary,
-                  size: 20,
-                ),
-              ),
-            ],
+              ],
+            ),
           ),
-        ),
       ],
     );
   }
 
+  /// Kartu jadwal sesi pelatihan dengan format tanggal & jam yang dinamis
+  Widget _buildScheduleItemCard(TrainingScheduleModel schedule) {
+    final dateParts = _parseDateParts(schedule.date);
+
+    return InkWell(
+      onTap: () {
+        Navigator.push(
+          context,
+          MaterialPageRoute(builder: (_) => const TrainingScheduleScreen()),
+        );
+      },
+      borderRadius: BorderRadius.circular(16),
+      child: Container(
+        padding: const EdgeInsets.all(14),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: AppColors.cardBorder),
+        ),
+        child: Row(
+          children: [
+            // Date badge
+            Container(
+              width: 50,
+              height: 54,
+              decoration: BoxDecoration(
+                color: AppColors.peachBg,
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(
+                  color: AppColors.orange.withValues(alpha: 0.3),
+                ),
+              ),
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Text(
+                    dateParts['day'] ?? '01',
+                    style: const TextStyle(
+                      fontSize: 17,
+                      fontWeight: FontWeight.w800,
+                      color: AppColors.peachText,
+                    ),
+                  ),
+                  Text(
+                    dateParts['month'] ?? 'SESI',
+                    style: const TextStyle(
+                      fontSize: 9,
+                      fontWeight: FontWeight.w800,
+                      color: AppColors.peachText,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 6,
+                      vertical: 2,
+                    ),
+                    decoration: BoxDecoration(
+                      color: AppColors.peachBg,
+                      borderRadius: BorderRadius.circular(6),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const Icon(
+                          Icons.access_time,
+                          size: 10,
+                          color: AppColors.peachText,
+                        ),
+                        const SizedBox(width: 4),
+                        Text(
+                          '${schedule.startTime} - ${schedule.endTime} WIB',
+                          style: const TextStyle(
+                            fontSize: 10,
+                            fontWeight: FontWeight.w700,
+                            color: AppColors.peachText,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    schedule.className.isNotEmpty ? schedule.className : schedule.title,
+                    style: const TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w800,
+                      color: AppColors.textPrimary,
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    '${schedule.room} • ${schedule.instructor}',
+                    style: const TextStyle(
+                      fontSize: 11,
+                      color: AppColors.textSecondary,
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(width: 8),
+            Container(
+              width: 28,
+              height: 28,
+              decoration: BoxDecoration(
+                color: AppColors.background,
+                shape: BoxShape.circle,
+              ),
+              child: const Icon(
+                Icons.chevron_right_rounded,
+                color: AppColors.textSecondary,
+                size: 20,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  /// Section Rekomendasi Pelatihan: Mengambil data katalog live dari TrainingClassProvider
   Widget _buildRecommendedTrainingsSection() {
-    final recommendations = [
-      {
-        'title': 'Fullstack Web Developer',
-        'category': 'TEKNOLOGI INFORMASI',
-        'desc':
-            'Menguasai arsitektur RESTful API, React, dan integrasi database..',
-        'jp': '280 JP',
-        'quota': 'Sisa Kuota: 4',
-        'image': 'https://images.unsplash.com/photo-1522071820081-009f0129c71c?w=600&auto=format&fit=crop&q=80',
-      },
-      {
-        'title': 'Teknisi Kendaraan Listrik (EV)',
-        'category': 'MANUFAKTUR & OTOMOTIF',
-        'desc': 'Sertifikasi BNSP penanganan baterai tegangan tinggi dan kalibrasi..',
-        'jp': '320 JP',
-        'quota': 'Sisa Kuota: 3',
-        'image': 'https://images.unsplash.com/photo-1581092160607-ee22621dd758?w=600&auto=format&fit=crop&q=80',
-      },
-    ];
+    final trainingProvider = context.watch<TrainingClassProvider>();
+    final catalogList = trainingProvider.allCatalog;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -891,9 +955,7 @@ _buildGreetingSection(),
             ),
             GestureDetector(
               onTap: () {
-                if (widget.onSwitchTab != null) {
-                  widget.onSwitchTab!(1);
-                }
+                widget.onSwitchTab?.call(1);
               },
               child: const Text(
                 'Lihat Semua',
@@ -907,190 +969,205 @@ _buildGreetingSection(),
           ],
         ),
         const SizedBox(height: 12),
-        SizedBox(
-          height: 230,
-          child: ListView.separated(
-            scrollDirection: Axis.horizontal,
-            itemCount: recommendations.length,
-            separatorBuilder: (context, index) => const SizedBox(width: 12),
-            itemBuilder: (context, index) {
-              final item = recommendations[index];
-              return GestureDetector(
-                onTap: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (context) => TrainingDetailScreen(
-                        title: item['title']!,
-                        imageUrl: item['image']!,
+        if (trainingProvider.isLoadingCatalog && catalogList.isEmpty)
+          Container(
+            height: 200,
+            alignment: Alignment.center,
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(color: AppColors.cardBorder),
+            ),
+            child: const CircularProgressIndicator(color: AppColors.primary),
+          )
+        else if (catalogList.isEmpty)
+          Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(color: AppColors.cardBorder),
+            ),
+            child: const Center(
+              child: Text(
+                'Belum ada rekomendasi pelatihan saat ini.',
+                style: TextStyle(fontSize: 11.5, color: AppColors.textSecondary),
+              ),
+            ),
+          )
+        else
+          SizedBox(
+            height: 234,
+            child: ListView.separated(
+              scrollDirection: Axis.horizontal,
+              itemCount: catalogList.length > 5 ? 5 : catalogList.length,
+              separatorBuilder: (context, index) => const SizedBox(width: 12),
+              itemBuilder: (context, index) {
+                final item = catalogList[index];
+                return GestureDetector(
+                  onTap: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => TrainingDetailScreen(model: item),
                       ),
+                    );
+                  },
+                  child: Container(
+                    width: 240,
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(16),
+                      border: Border.all(color: AppColors.cardBorder),
                     ),
-                  );
-                },
-                child: Container(
-                  width: 240,
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(16),
-                    border: Border.all(color: AppColors.cardBorder),
-                  ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Stack(
-                        children: [
-                          ClipRRect(
-                            borderRadius: const BorderRadius.vertical(
-                              top: Radius.circular(16),
-                            ),
-                            child: SizedBox(
-                              height: 110,
-                              width: double.infinity,
-                              child: Image.network(
-                                item['image']!,
-                                fit: BoxFit.cover,
-                              ),
-                            ),
-                          ),
-                          Positioned(
-                            top: 8,
-                            left: 8,
-                            child: Container(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 6,
-                                vertical: 3,
-                              ),
-                              decoration: BoxDecoration(
-                                color: Colors.black.withValues(alpha: 0.7),
-                                borderRadius: BorderRadius.circular(4),
-                              ),
-                              child: Text(
-                                item['jp']!,
-                                style: const TextStyle(
-                                  fontSize: 9,
-                                  fontWeight: FontWeight.bold,
-                                  color: Colors.white,
-                                ),
-                              ),
-                            ),
-                          ),
-                          Positioned(
-                            top: 8,
-                            right: 8,
-                            child: Container(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 6,
-                                vertical: 3,
-                              ),
-                              decoration: BoxDecoration(
-                                color: AppColors.mint,
-                                borderRadius: BorderRadius.circular(4),
-                              ),
-                              child: Text(
-                                item['quota']!,
-                                style: const TextStyle(
-                                  fontSize: 9,
-                                  fontWeight: FontWeight.w800,
-                                  color: AppColors.mintDark,
-                                ),
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                      Padding(
-                        padding: const EdgeInsets.all(10),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Stack(
                           children: [
-                            Text(
-                              item['category']!,
-                              style: const TextStyle(
-                                fontSize: 9,
-                                fontWeight: FontWeight.w700,
-                                color: AppColors.textSecondary,
+                            ClipRRect(
+                              borderRadius: const BorderRadius.vertical(
+                                top: Radius.circular(16),
                               ),
-                            ),
-                            const SizedBox(height: 3),
-                            Text(
-                              item['title']!,
-                              style: const TextStyle(
-                                fontSize: 13,
-                                fontWeight: FontWeight.w800,
-                                color: AppColors.textPrimary,
-                              ),
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                            const SizedBox(height: 3),
-                            Text(
-                              item['desc']!,
-                              style: const TextStyle(
-                                fontSize: 10,
-                                color: AppColors.textSecondary,
-                              ),
-                              maxLines: 2,
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                            const SizedBox(height: 8),
-                            Row(
-                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                              children: [
-                                Container(
-                                  padding: const EdgeInsets.symmetric(
-                                    horizontal: 8,
-                                    vertical: 3,
-                                  ),
-                                  decoration: BoxDecoration(
+                              child: SizedBox(
+                                height: 110,
+                                width: double.infinity,
+                                child: Image.network(
+                                  item.imageUrl,
+                                  fit: BoxFit.cover,
+                                  errorBuilder: (context, error, stackTrace) =>
+                                      Container(
                                     color: AppColors.mintBg,
-                                    borderRadius: BorderRadius.circular(10),
-                                  ),
-                                  child: const Text(
-                                    'Subsidi Penuh',
-                                    style: TextStyle(
-                                      fontSize: 9,
-                                      fontWeight: FontWeight.w700,
-                                      color: AppColors.mintDark,
+                                    child: const Center(
+                                      child: Icon(
+                                        Icons.school_outlined,
+                                        color: AppColors.mintDark,
+                                        size: 32,
+                                      ),
                                     ),
                                   ),
                                 ),
-                              ],
+                              ),
+                            ),
+                            Positioned(
+                              top: 8,
+                              left: 8,
+                              child: Container(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 6,
+                                  vertical: 3,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: Colors.black.withValues(alpha: 0.7),
+                                  borderRadius: BorderRadius.circular(4),
+                                ),
+                                child: Text(
+                                  item.duration,
+                                  style: const TextStyle(
+                                    fontSize: 9,
+                                    fontWeight: FontWeight.bold,
+                                    color: Colors.white,
+                                  ),
+                                ),
+                              ),
+                            ),
+                            Positioned(
+                              top: 8,
+                              right: 8,
+                              child: Container(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 6,
+                                  vertical: 3,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: AppColors.mint,
+                                  borderRadius: BorderRadius.circular(4),
+                                ),
+                                child: Text(
+                                  'Sisa Kuota: ${item.remainingQuota}',
+                                  style: const TextStyle(
+                                    fontSize: 9,
+                                    fontWeight: FontWeight.w800,
+                                    color: AppColors.mintDark,
+                                  ),
+                                ),
+                              ),
                             ),
                           ],
                         ),
-                      ),
-                    ],
+                        Padding(
+                          padding: const EdgeInsets.all(10),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                item.category.toUpperCase(),
+                                style: const TextStyle(
+                                  fontSize: 9,
+                                  fontWeight: FontWeight.w700,
+                                  color: AppColors.textSecondary,
+                                ),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                              const SizedBox(height: 3),
+                              Text(
+                                item.title,
+                                style: const TextStyle(
+                                  fontSize: 13,
+                                  fontWeight: FontWeight.w800,
+                                  color: AppColors.textPrimary,
+                                ),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                              const SizedBox(height: 3),
+                              Text(
+                                item.description,
+                                style: const TextStyle(
+                                  fontSize: 10,
+                                  color: AppColors.textSecondary,
+                                ),
+                                maxLines: 2,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                              const SizedBox(height: 8),
+                              Container(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 8,
+                                  vertical: 3,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: AppColors.mintBg,
+                                  borderRadius: BorderRadius.circular(10),
+                                ),
+                                child: Text(
+                                  item.badge.isNotEmpty ? item.badge : 'Subsidi Penuh',
+                                  style: const TextStyle(
+                                    fontSize: 9,
+                                    fontWeight: FontWeight.w700,
+                                    color: AppColors.mintDark,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
-                ),
-              );
-            },
+                );
+              },
+            ),
           ),
-        ),
       ],
     );
   }
 
+  /// Section Peluang Kerja: Mengambil data lowongan live dari JobProvider
   Widget _buildJobOpportunitiesSection() {
-    final jobs = [
-      {
-        'title': 'Junior Graphic Designer',
-        'company': 'PT Kreatif Nusantara Media',
-        'type': 'Full-time',
-        'salary': 'Rp 4.500.000 - 6.000.000',
-        'location': 'Surabaya (Hybrid)',
-        'deadline': '30 Sep 2026',
-        'logo': 'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=100&auto=format&fit=crop&q=80',
-      },
-      {
-        'title': 'Frontend Web Developer',
-        'company': 'PT Telkom Akses Regional',
-        'type': 'Kontrak',
-        'salary': 'Rp 5.200.000 - 7.500.000',
-        'location': 'Jember / On-site',
-        'deadline': '15 Okt 2026',
-        'logo': 'https://images.unsplash.com/photo-1549923746-c502d488b3ea?w=100&auto=format&fit=crop&q=80',
-      },
-    ];
+    final jobProvider = context.watch<JobProvider>();
+    final jobs = jobProvider.allJobs;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -1118,9 +1195,7 @@ _buildGreetingSection(),
             ),
             GestureDetector(
               onTap: () {
-                if (widget.onSwitchTab != null) {
-                  widget.onSwitchTab!(2); // Lowongan tab
-                }
+                widget.onSwitchTab?.call(2); // Pindah ke tab Lowongan
               },
               child: const Text(
                 'Pusat Karir',
@@ -1134,158 +1209,248 @@ _buildGreetingSection(),
           ],
         ),
         const SizedBox(height: 12),
-        ...jobs.map((job) {
-          return Container(
-            margin: const EdgeInsets.only(bottom: 12),
-            padding: const EdgeInsets.all(14),
+        if (jobProvider.isLoading && jobs.isEmpty)
+          Container(
+            height: 120,
+            alignment: Alignment.center,
             decoration: BoxDecoration(
               color: Colors.white,
               borderRadius: BorderRadius.circular(16),
               border: Border.all(color: AppColors.cardBorder),
             ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  children: [
-                    Container(
-                      width: 36,
-                      height: 36,
-                      decoration: BoxDecoration(
-                        color: AppColors.background,
-                        borderRadius: BorderRadius.circular(8),
-                        border: Border.all(color: AppColors.cardBorder),
-                        image: DecorationImage(
-                          image: NetworkImage(job['logo']!),
-                          fit: BoxFit.cover,
+            child: const CircularProgressIndicator(color: AppColors.primary),
+          )
+        else if (jobs.isEmpty)
+          Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(color: AppColors.cardBorder),
+            ),
+            child: const Center(
+              child: Text(
+                'Belum ada peluang kerja saat ini.',
+                style: TextStyle(fontSize: 11.5, color: AppColors.textSecondary),
+              ),
+            ),
+          )
+        else
+          ...jobs.take(2).map((job) {
+            return Container(
+              margin: const EdgeInsets.only(bottom: 12),
+              padding: const EdgeInsets.all(14),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(color: AppColors.cardBorder),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Container(
+                        width: 38,
+                        height: 38,
+                        decoration: BoxDecoration(
+                          color: AppColors.background,
+                          borderRadius: BorderRadius.circular(8),
+                          border: Border.all(color: AppColors.cardBorder),
                         ),
-                      ),
-                    ),
-                    const SizedBox(width: 10),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            job['title']!,
-                            style: const TextStyle(
-                              fontSize: 13,
-                              fontWeight: FontWeight.w800,
-                              color: AppColors.textPrimary,
+                        child: ClipRRect(
+                          borderRadius: BorderRadius.circular(8),
+                          child: Image.network(
+                            job.companyLogo,
+                            fit: BoxFit.cover,
+                            errorBuilder: (context, error, stackTrace) =>
+                                const Icon(
+                              Icons.business_outlined,
+                              color: AppColors.primary,
+                              size: 20,
                             ),
                           ),
+                        ),
+                      ),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              job.title,
+                              style: const TextStyle(
+                                fontSize: 13,
+                                fontWeight: FontWeight.w800,
+                                color: AppColors.textPrimary,
+                              ),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                            Text(
+                              job.companyName,
+                              style: const TextStyle(
+                                fontSize: 11,
+                                color: AppColors.textSecondary,
+                              ),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ],
+                        ),
+                      ),
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 8,
+                          vertical: 3,
+                        ),
+                        decoration: BoxDecoration(
+                          color: AppColors.mintBg,
+                          borderRadius: BorderRadius.circular(6),
+                        ),
+                        child: Text(
+                          job.type,
+                          style: const TextStyle(
+                            fontSize: 10,
+                            fontWeight: FontWeight.w700,
+                            color: AppColors.mintDark,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 10),
+                  Text(
+                    job.salary,
+                    style: const TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w800,
+                      color: AppColors.mintDark,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Row(
+                    children: [
+                      const Icon(
+                        Icons.location_on_outlined,
+                        size: 12,
+                        color: AppColors.textSecondary,
+                      ),
+                      const SizedBox(width: 4),
+                      Expanded(
+                        child: Text(
+                          job.location,
+                          style: const TextStyle(
+                            fontSize: 11,
+                            color: AppColors.textSecondary,
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 10),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Row(
+                        children: [
+                          const Icon(
+                            Icons.hourglass_bottom_rounded,
+                            size: 12,
+                            color: AppColors.orangeText,
+                          ),
+                          const SizedBox(width: 4),
                           Text(
-                            job['company']!,
+                            job.deadline.startsWith('Tenggat')
+                                ? job.deadline
+                                : 'Tenggat: ${job.deadline}',
                             style: const TextStyle(
-                              fontSize: 11,
-                              color: AppColors.textSecondary,
+                              fontSize: 10,
+                              fontWeight: FontWeight.w600,
+                              color: AppColors.orangeText,
                             ),
                           ),
                         ],
                       ),
-                    ),
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 8,
-                        vertical: 3,
-                      ),
-                      decoration: BoxDecoration(
-                        color: AppColors.mintBg,
-                        borderRadius: BorderRadius.circular(6),
-                      ),
-                      child: Text(
-                        job['type']!,
-                        style: const TextStyle(
-                          fontSize: 10,
-                          fontWeight: FontWeight.w700,
-                          color: AppColors.mintDark,
+                      SizedBox(
+                        height: 32,
+                        child: ElevatedButton(
+                          onPressed: () {
+                            widget.onSwitchTab?.call(2); // Buka di tab Lowongan
+                          },
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: AppColors.primary,
+                            foregroundColor: Colors.white,
+                            elevation: 0,
+                            padding: const EdgeInsets.symmetric(horizontal: 14),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                          ),
+                          child: const Text(
+                            'Lihat Detail',
+                            style: TextStyle(
+                              fontSize: 11,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
                         ),
                       ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 10),
-                Text(
-                  job['salary']!,
-                  style: const TextStyle(
-                    fontSize: 12,
-                    fontWeight: FontWeight.w800,
-                    color: AppColors.mintDark,
+                    ],
                   ),
-                ),
-                const SizedBox(height: 4),
-                Row(
-                  children: [
-                    const Icon(
-                      Icons.location_on_outlined,
-                      size: 12,
-                      color: AppColors.textSecondary,
-                    ),
-                    const SizedBox(width: 4),
-                    Text(
-                      job['location']!,
-                      style: const TextStyle(
-                        fontSize: 11,
-                        color: AppColors.textSecondary,
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 10),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Row(
-                      children: [
-                        const Icon(
-                          Icons.hourglass_bottom_rounded,
-                          size: 12,
-                          color: AppColors.orangeText,
-                        ),
-                        const SizedBox(width: 4),
-                        Text(
-                          'Tenggat: ${job['deadline']}',
-                          style: const TextStyle(
-                            fontSize: 10,
-                            fontWeight: FontWeight.w600,
-                            color: AppColors.orangeText,
-                          ),
-                        ),
-                      ],
-                    ),
-                    SizedBox(
-                      height: 32,
-                      child: ElevatedButton(
-                        onPressed: () {
-                          if (widget.onSwitchTab != null) {
-                            widget.onSwitchTab!(2);
-                          }
-                        },
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: AppColors.primary,
-                          foregroundColor: Colors.white,
-                          elevation: 0,
-                          padding: const EdgeInsets.symmetric(horizontal: 14),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(8),
-                          ),
-                        ),
-                        child: const Text(
-                          'Lihat Detail',
-                          style: TextStyle(
-                            fontSize: 11,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ],
-            ),
-          );
-        }),
+                ],
+              ),
+            );
+          }),
       ],
     );
+  }
+
+  /// Helper untuk memparsing tanggal dinamis menjadi day dan month singkat
+  Map<String, String> _parseDateParts(String dateStr) {
+    try {
+      final parsed = DateTime.tryParse(dateStr);
+      if (parsed != null) {
+        const months = [
+          'JAN', 'FEB', 'MAR', 'APR', 'MEI', 'JUN',
+          'JUL', 'AGU', 'SEP', 'OKT', 'NOV', 'DES'
+        ];
+        final day = parsed.day.toString().padLeft(2, '0');
+        final month = months[parsed.month - 1];
+        return {'day': day, 'month': month};
+      }
+    } catch (_) {}
+
+    final parts = dateStr.trim().split(RegExp(r'[\s\-/]+'));
+    if (parts.length >= 2) {
+      String day = parts[0];
+      String month = parts[1].toUpperCase();
+      if (int.tryParse(parts[0]) != null && parts[0].length == 4) {
+        day = parts.length >= 3 ? parts[2] : '01';
+        final mIdx = int.tryParse(parts[1]);
+        if (mIdx != null && mIdx >= 1 && mIdx <= 12) {
+          const months = [
+            'JAN', 'FEB', 'MAR', 'APR', 'MEI', 'JUN',
+            'JUL', 'AGU', 'SEP', 'OKT', 'NOV', 'DES'
+          ];
+          month = months[mIdx - 1];
+        }
+      } else if (month.length > 3) {
+        month = month.substring(0, 3);
+      }
+      return {'day': day.padLeft(2, '0'), 'month': month};
+    }
+
+    final now = DateTime.now();
+    const months = [
+      'JAN', 'FEB', 'MAR', 'APR', 'MEI', 'JUN',
+      'JUL', 'AGU', 'SEP', 'OKT', 'NOV', 'DES'
+    ];
+    return {
+      'day': now.day.toString().padLeft(2, '0'),
+      'month': months[now.month - 1]
+    };
   }
 }
