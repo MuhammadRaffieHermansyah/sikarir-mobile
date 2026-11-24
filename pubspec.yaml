@@ -16,6 +16,8 @@ dependencies:
   image_picker: ^1.1.2         # Pilih foto dari galeri / kamera
   http_parser: ^4.0.2          # MIME type untuk multipart upload
   shared_preferences: ^2.2.2
+  url_launcher: ^6.3.3
+  file_picker: ^13.4.1
 
 dev_dependencies:
   flutter_test:

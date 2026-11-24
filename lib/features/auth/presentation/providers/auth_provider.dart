@@ -19,6 +19,7 @@ class AuthProvider extends ChangeNotifier {
   bool get isAuthenticated => _isAuthenticated;
   LoginResponse? get user => _user;
   String? get token => _user?.token;
+  bool get isInstructor => _user?.isInstructor ?? false;
   String? get errorMessage => _errorMessage;
 
   set isLoading(bool value) {

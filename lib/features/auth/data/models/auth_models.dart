@@ -28,24 +28,32 @@ class LoginResponse {
   final String name;
   final String email;
 
+  /// 'peserta' (default) atau 'instruktur'.
+  final String role;
+
   LoginResponse({
     required this.token,
     required this.userId,
     required this.name,
     required this.email,
+    this.role = 'peserta',
   });
+
+  bool get isInstructor => role == 'instruktur';
 
   LoginResponse copyWith({
     String? token,
     String? userId,
     String? name,
     String? email,
+    String? role,
   }) {
     return LoginResponse(
       token: token ?? this.token,
       userId: userId ?? this.userId,
       name: name ?? this.name,
       email: email ?? this.email,
+      role: role ?? this.role,
     );
   }
 
@@ -55,6 +63,7 @@ class LoginResponse {
       "userId": userId,
       "name": name,
       "email": email,
+      "role": role,
     };
   }
 
@@ -88,11 +97,20 @@ class LoginResponse {
         map['email'] ??
         '';
 
+    final rawRole = userData['role'] ??
+        userData['peran'] ??
+        data['role'] ??
+        data['peran'] ??
+        map['role'] ??
+        map['peran'] ??
+        'peserta';
+
     return LoginResponse(
       token: token.toString(),
       userId: userId.toString(),
       name: name.toString(),
       email: email.toString(),
+      role: _normalizeRole(rawRole),
     );
   }
 }
@@ -184,6 +202,15 @@ class RegisterResponse {
       email: email.toString(),
     );
   }
+}
+
+/// Memetakan nilai role dari backend ke 'instruktur' atau 'peserta'.
+String _normalizeRole(dynamic raw) {
+  final value = (raw is Map ? (raw['name'] ?? raw['nama'] ?? '') : raw)
+      .toString()
+      .trim()
+      .toLowerCase();
+  return (value == 'instruktur' || value == 'instructor') ? 'instruktur' : 'peserta';
 }
 
 Map<String, dynamic> _unwrap(
