@@ -1,6 +1,7 @@
 import 'package:flutter/foundation.dart';
 import 'package:sikarir/features/attendance/data/models/attendance_model.dart';
 import 'package:sikarir/features/attendance/data/repositories/attendance_repository.dart';
+import 'package:sikarir/features/attendance/data/services/attendance_service.dart';
 import 'package:sikarir/features/attendance/utils/attendance_formatters.dart';
 
 class AttendanceProvider extends ChangeNotifier {
@@ -162,19 +163,66 @@ class AttendanceProvider extends ChangeNotifier {
   }
 
   /// Submit presensi (hadir / izin / sakit). Melempar error ke pemanggil.
-  Future<void> submitAttendance(
+  /// Rentang izin/sakit menambahkan beberapa catatan sekaligus.
+  Future<AttendanceSubmitResult> submitAttendance(
     AttendanceSubmitRequest request, [
     String? token,
   ]) async {
-    if (_isSubmitting) return; // cegah submit ganda
+    if (_isSubmitting) {
+      throw const AttendanceException(
+        'Presensi sedang diproses. Mohon tunggu.',
+        AttendanceErrorType.validation,
+      );
+    }
     _isSubmitting = true;
     notifyListeners();
 
     try {
       final result = await repository.submitAttendance(request, token);
-      _todayAttendance = result;
+      final today = formatApiDate(_now());
+      for (final item in result.items) {
+        if (item.date.startsWith(today)) _todayAttendance = item;
+      }
       _todayLoaded = true;
-      _attendanceList = [result, ..._attendanceList];
+      _attendanceList = [...result.items.reversed, ..._attendanceList];
+      return result;
+    } finally {
+      _isSubmitting = false;
+      notifyListeners();
+    }
+  }
+
+  /// Presensi pulang untuk catatan [absenId]; memperbarui catatan di state.
+  Future<AttendanceItem> clockOut({
+    required String absenId,
+    required double latitude,
+    required double longitude,
+    String? token,
+  }) async {
+    if (_isSubmitting) {
+      throw const AttendanceException(
+        'Presensi sedang diproses. Mohon tunggu.',
+        AttendanceErrorType.validation,
+      );
+    }
+    _isSubmitting = true;
+    notifyListeners();
+
+    try {
+      final updated = await repository.clockOut(
+        absenId: absenId,
+        latitude: latitude,
+        longitude: longitude,
+        token: token,
+      );
+      _attendanceList = [
+        for (final item in _attendanceList)
+          item.id == absenId ? item.copyWithClockOut(updated) : item,
+      ];
+      if (_todayAttendance?.id == absenId) {
+        _todayAttendance = _todayAttendance!.copyWithClockOut(updated);
+      }
+      return updated;
     } finally {
       _isSubmitting = false;
       notifyListeners();

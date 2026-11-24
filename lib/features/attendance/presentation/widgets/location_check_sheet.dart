@@ -8,13 +8,20 @@ import 'package:sikarir/features/attendance/utils/attendance_formatters.dart';
 
 enum _Step { checking, valid, invalid, error, submitting, success }
 
-/// Bottom sheet: cek lokasi GPS lalu konfirmasi presensi hadir.
+/// Jenis presensi yang dikonfirmasi lewat sheet lokasi.
+enum AttendanceAction { masuk, pulang }
+
+/// Bottom sheet: cek lokasi GPS lalu konfirmasi presensi masuk atau pulang.
 class LocationCheckSheet extends StatefulWidget {
   final AttendanceProvider provider;
   final String? token;
   final String pesertaId;
   final String jadwalId;
   final AttendanceTarget target;
+  final AttendanceAction action;
+
+  /// Wajib untuk [AttendanceAction.pulang]: id catatan presensi masuk hari ini.
+  final String? absenId;
 
   const LocationCheckSheet({
     super.key,
@@ -23,7 +30,10 @@ class LocationCheckSheet extends StatefulWidget {
     required this.pesertaId,
     required this.jadwalId,
     required this.target,
-  });
+    this.action = AttendanceAction.masuk,
+    this.absenId,
+  }) : assert(action == AttendanceAction.masuk || absenId != null,
+            'absenId wajib untuk presensi pulang');
 
   @override
   State<LocationCheckSheet> createState() => _LocationCheckSheetState();
@@ -75,25 +85,37 @@ class _LocationCheckSheetState extends State<LocationCheckSheet> {
     }
   }
 
+  bool get _isPulang => widget.action == AttendanceAction.pulang;
+
   Future<void> _doSubmit() async {
     setState(() => _step = _Step.submitting);
     try {
-      // Waktu diambil saat submit (bukan snapshot saat sheet dibuka).
-      final now = DateTime.now();
-      final notes = _notesController.text.trim();
+      if (_isPulang) {
+        // Jam keluar ditentukan server; klien hanya mengirim koordinat.
+        await widget.provider.clockOut(
+          absenId: widget.absenId!,
+          latitude: _result!.latitude,
+          longitude: _result!.longitude,
+          token: widget.token,
+        );
+      } else {
+        // Waktu diambil saat submit (bukan snapshot saat sheet dibuka).
+        final now = DateTime.now();
+        final notes = _notesController.text.trim();
 
-      final request = AttendanceSubmitRequest(
-        jadwalId: widget.jadwalId,
-        pesertaId: widget.pesertaId,
-        tanggal: formatApiDate(now),
-        jamHadir: formatApiTime(now),
-        status: 'hadir',
-        notes: notes.isEmpty ? null : notes,
-        latitude: _result?.latitude,
-        longitude: _result?.longitude,
-      );
+        final request = AttendanceSubmitRequest(
+          jadwalId: widget.jadwalId,
+          pesertaId: widget.pesertaId,
+          tanggal: formatApiDate(now),
+          jamHadir: formatApiTime(now),
+          status: 'hadir',
+          notes: notes.isEmpty ? null : notes,
+          latitude: _result?.latitude,
+          longitude: _result?.longitude,
+        );
 
-      await widget.provider.submitAttendance(request, widget.token);
+        await widget.provider.submitAttendance(request, widget.token);
+      }
       if (!mounted) return;
       setState(() => _step = _Step.success);
     } catch (e) {
@@ -170,12 +192,14 @@ class _LocationCheckSheetState extends State<LocationCheckSheet> {
             padding: const EdgeInsets.all(8),
             decoration: BoxDecoration(
                 color: AppColors.mintBg, borderRadius: BorderRadius.circular(10)),
-            child: const Icon(Icons.fingerprint_rounded,
-                color: AppColors.mintDark, size: 22),
+            child: Icon(
+                _isPulang ? Icons.logout_rounded : Icons.fingerprint_rounded,
+                color: AppColors.mintDark,
+                size: 22),
           ),
           const SizedBox(width: 12),
-          const Text('Konfirmasi Presensi Masuk',
-              style: TextStyle(
+          Text(_isPulang ? 'Konfirmasi Presensi Pulang' : 'Konfirmasi Presensi Masuk',
+              style: const TextStyle(
                   fontSize: 17,
                   fontWeight: FontWeight.w800,
                   color: AppColors.textPrimary)),
@@ -209,24 +233,33 @@ class _LocationCheckSheetState extends State<LocationCheckSheet> {
           ]),
         ),
         const SizedBox(height: 14),
-        const Text('Keterangan (opsional)',
-            style: TextStyle(
-                fontSize: 12,
-                fontWeight: FontWeight.bold,
-                color: AppColors.textSecondary)),
-        const SizedBox(height: 6),
-        TextField(
-          controller: _notesController,
-          decoration: attendanceNotesDecoration('Tambah catatan...'),
-          maxLines: 2,
-          maxLength: kAttendanceNotesMaxLength,
-        ),
-        const SizedBox(height: 12),
+        if (!_isPulang) ...[
+          const Text('Keterangan (opsional)',
+              style: TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.bold,
+                  color: AppColors.textSecondary)),
+          const SizedBox(height: 6),
+          TextField(
+            controller: _notesController,
+            decoration: attendanceNotesDecoration('Tambah catatan...'),
+            maxLines: 2,
+            maxLength: kAttendanceNotesMaxLength,
+          ),
+          const SizedBox(height: 12),
+        ] else
+          const Padding(
+            padding: EdgeInsets.only(bottom: 14),
+            child: Text(
+              'Jam pulang dicatat otomatis oleh server saat Anda mengonfirmasi.',
+              style: TextStyle(fontSize: 12, color: AppColors.textSecondary),
+            ),
+          ),
         ElevatedButton.icon(
           onPressed: _doSubmit,
           icon: const Icon(Icons.check_rounded),
-          label: const Text('Konfirmasi Presensi',
-              style: TextStyle(fontSize: 15, fontWeight: FontWeight.w800)),
+          label: Text(_isPulang ? 'Konfirmasi Pulang' : 'Konfirmasi Presensi',
+              style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w800)),
           style: attendancePrimaryButtonStyle(),
         ),
         const SizedBox(height: 8),
@@ -392,13 +425,16 @@ class _LocationCheckSheetState extends State<LocationCheckSheet> {
               color: AppColors.mintDark, size: 48),
         ),
         const SizedBox(height: 14),
-        const Text('Presensi Berhasil!',
-            style: TextStyle(
+        Text(_isPulang ? 'Presensi Pulang Berhasil!' : 'Presensi Berhasil!',
+            style: const TextStyle(
                 fontSize: 18,
                 fontWeight: FontWeight.w800,
                 color: AppColors.textPrimary)),
         const SizedBox(height: 6),
-        Text('Kehadiran Anda telah tercatat pada ${formatLongDate(DateTime.now())}',
+        Text(
+            _isPulang
+                ? 'Kepulangan Anda telah tercatat pada ${formatLongDate(DateTime.now())}'
+                : 'Kehadiran Anda telah tercatat pada ${formatLongDate(DateTime.now())}',
             textAlign: TextAlign.center,
             style: const TextStyle(fontSize: 13, color: AppColors.textSecondary)),
         const SizedBox(height: 20),

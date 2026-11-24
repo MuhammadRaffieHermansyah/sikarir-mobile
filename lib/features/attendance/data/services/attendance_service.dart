@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
+import 'package:http_parser/http_parser.dart';
 import 'package:sikarir/core/constants/api_constants.dart';
 import 'package:sikarir/features/attendance/data/models/attendance_model.dart';
 
@@ -194,37 +195,141 @@ class AttendanceService {
     return null;
   }
 
-  /// Submit presensi baru (dengan koordinat GPS)
-  Future<AttendanceItem> submitAttendance(
+  /// Submit presensi baru (dengan koordinat GPS).
+  ///
+  /// Bila [AttendanceSubmitRequest.attachmentPath] terisi, dikirim sebagai
+  /// `multipart/form-data` (field `lampiran`); selain itu JSON biasa.
+  /// Rentang izin/sakit menghasilkan beberapa item (satu per hari pelatihan).
+  Future<AttendanceSubmitResult> submitAttendance(
     AttendanceSubmitRequest request, [
     String? token,
   ]) async {
-    final body = json.encode(request.toMap());
+    final http.Response response;
 
-    if (kDebugMode) {
-      debugPrint('Submit Attendance Body: $body');
+    if (request.attachmentPath != null) {
+      response = await _sendMultipart(request, token);
+    } else {
+      final body = json.encode(request.toMap());
+      if (kDebugMode) debugPrint('Submit Attendance Body: $body');
+      response = await _send(
+        () => client.post(
+          Uri.parse(ApiConstants.absen),
+          headers: _headers(token),
+          body: body,
+        ),
+        const Duration(seconds: 10),
+      );
     }
-
-    final response = await _send(
-      () => client.post(
-        Uri.parse(ApiConstants.absen),
-        headers: _headers(token),
-        body: body,
-      ),
-      const Duration(seconds: 10),
-    );
 
     if (kDebugMode) {
       debugPrint('Submit Attendance Response: ${response.statusCode}');
     }
 
-    if (response.statusCode == 200 || response.statusCode == 201) {
-      final decoded = json.decode(response.body);
-      final data = decoded is Map ? (decoded['data'] ?? decoded) : null;
-      return AttendanceItem.fromMap(
-        data is Map<String, dynamic> ? data : request.toMap(),
+    if (response.statusCode != 200 && response.statusCode != 201) {
+      throw _errorFromStatus(response, 'Gagal melakukan presensi');
+    }
+
+    final decoded = json.decode(response.body);
+    final data = decoded is Map ? (decoded['data'] ?? decoded) : null;
+
+    final List<AttendanceItem> items;
+    if (data is List) {
+      items = data
+          .whereType<Map<String, dynamic>>()
+          .map(AttendanceItem.fromMap)
+          .toList();
+    } else {
+      items = [
+        AttendanceItem.fromMap(
+          data is Map<String, dynamic> ? data : request.toMap(),
+        ),
+      ];
+    }
+
+    final skipped = decoded is Map && decoded['dilewati'] is List
+        ? (decoded['dilewati'] as List).map((e) => e.toString()).toList()
+        : <String>[];
+
+    return AttendanceSubmitResult(
+      items: items,
+      skippedDates: skipped,
+      message: decoded is Map ? decoded['message']?.toString() : null,
+    );
+  }
+
+  Future<http.Response> _sendMultipart(
+    AttendanceSubmitRequest request,
+    String? token,
+  ) async {
+    final path = request.attachmentPath!;
+    final ext = path.split('.').last.toLowerCase();
+    final mime = switch (ext) {
+      'png' => 'image/png',
+      'pdf' => 'application/pdf',
+      _ => 'image/jpeg',
+    };
+
+    final multipart = http.MultipartRequest('POST', Uri.parse(ApiConstants.absen))
+      ..headers.addAll({
+        'Accept': 'application/json',
+        if (token != null && token.isNotEmpty) 'Authorization': 'Bearer $token',
+      })
+      ..fields.addAll(
+        request.toMap().map((key, value) => MapEntry(key, value.toString())),
+      );
+
+    try {
+      multipart.files.add(await http.MultipartFile.fromPath(
+        'lampiran',
+        path,
+        contentType: MediaType.parse(mime),
+      ));
+    } on FileSystemException {
+      throw const AttendanceException(
+        'Berkas lampiran tidak dapat dibaca. Pilih ulang berkas.',
+        AttendanceErrorType.validation,
       );
     }
-    throw _errorFromStatus(response, 'Gagal melakukan presensi');
+
+    return _send(
+      () async => http.Response.fromStream(await client.send(multipart)),
+      const Duration(seconds: 30),
+    );
+  }
+
+  /// Presensi pulang untuk catatan [absenId]. Jam keluar ditentukan server;
+  /// lokasi GPS divalidasi ulang terhadap radius jadwal.
+  Future<AttendanceItem> clockOut({
+    required String absenId,
+    required double latitude,
+    required double longitude,
+    String? token,
+  }) async {
+    final response = await _send(
+      () => client.post(
+        Uri.parse('${ApiConstants.absen}/$absenId/pulang'),
+        headers: _headers(token),
+        body: json.encode({'latitude': latitude, 'longitude': longitude}),
+      ),
+      const Duration(seconds: 10),
+    );
+
+    if (kDebugMode) {
+      debugPrint('Clock Out Response: ${response.statusCode}');
+    }
+
+    if (response.statusCode != 200) {
+      throw _errorFromStatus(response, 'Gagal melakukan presensi pulang');
+    }
+
+    final decoded = json.decode(response.body);
+    final data = decoded is Map ? (decoded['data'] ?? decoded) : null;
+    if (data is! Map<String, dynamic>) {
+      throw const AttendanceException(
+        'Respons server tidak valid.',
+        AttendanceErrorType.server,
+      );
+    }
+    return AttendanceItem.fromMap(data);
   }
 }

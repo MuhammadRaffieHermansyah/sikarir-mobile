@@ -159,7 +159,11 @@ class AttendanceTodayStatusCard extends StatelessWidget {
                     style: TextStyle(
                         fontSize: 14, fontWeight: FontWeight.w800, color: s.fg)),
                 if (today.clockInTime != null)
-                  Text('Jam masuk: ${today.clockInTime}',
+                  Text('Jam masuk: ${formatApiTimeLabel(today.clockInTime!)}',
+                      style: TextStyle(
+                          fontSize: 12, color: s.fg.withValues(alpha: 0.8))),
+                if (today.hasClockedOut)
+                  Text('Jam pulang: ${formatApiTimeLabel(today.clockOutTime!)}',
                       style: TextStyle(
                           fontSize: 12, color: s.fg.withValues(alpha: 0.8))),
                 if (today.jarakMeter != null)
@@ -173,6 +177,48 @@ class AttendanceTodayStatusCard extends StatelessWidget {
       ),
     );
   }
+}
+
+/// Pratinjau lampiran: gambar ditampilkan; berkas lain menampilkan tautannya.
+Future<void> showAttendanceAttachment(BuildContext context, String url) {
+  final isImage = RegExp(r'\.(jpe?g|png|webp)$', caseSensitive: false)
+      .hasMatch(Uri.tryParse(url)?.path ?? url);
+
+  return showDialog<void>(
+    context: context,
+    builder: (ctx) => AlertDialog(
+      title: const Text('Lampiran',
+          style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800)),
+      content: isImage
+          ? InteractiveViewer(
+              child: Image.network(
+                url,
+                errorBuilder: (_, _, _) =>
+                    const Text('Lampiran tidak dapat dimuat.'),
+                loadingBuilder: (_, child, progress) => progress == null
+                    ? child
+                    : const SizedBox(
+                        height: 120,
+                        child: Center(child: CircularProgressIndicator()),
+                      ),
+              ),
+            )
+          : Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text('Berkas ini tidak dapat dipratinjau. Alamat berkas:',
+                    style: TextStyle(fontSize: 12)),
+                const SizedBox(height: 8),
+                SelectableText(url, style: const TextStyle(fontSize: 12)),
+              ],
+            ),
+      actions: [
+        TextButton(
+            onPressed: () => Navigator.pop(ctx), child: const Text('Tutup')),
+      ],
+    ),
+  );
 }
 
 /// Satu baris riwayat presensi.
@@ -229,12 +275,31 @@ class AttendanceHistoryCard extends StatelessWidget {
                   size: 14, color: AppColors.textSecondary),
               const SizedBox(width: 4),
               Text(
-                'Masuk: ${item.clockInTime ?? '-'}',
+                'Masuk: ${item.clockInTime != null ? formatApiTimeLabel(item.clockInTime!) : '-'}'
+                '${item.hasClockedOut ? '  •  Pulang: ${formatApiTimeLabel(item.clockOutTime!)}' : ''}',
                 style: const TextStyle(
                     fontSize: 11.5, color: AppColors.textSecondary),
               ),
             ],
           ),
+          if (item.attachmentUrl != null) ...[
+            const SizedBox(height: 4),
+            InkWell(
+              onTap: () => showAttendanceAttachment(context, item.attachmentUrl!),
+              child: const Row(
+                children: [
+                  Icon(Icons.attach_file_rounded,
+                      size: 14, color: AppColors.primary),
+                  SizedBox(width: 4),
+                  Text('Lihat lampiran',
+                      style: TextStyle(
+                          fontSize: 11.5,
+                          fontWeight: FontWeight.w700,
+                          color: AppColors.primary)),
+                ],
+              ),
+            ),
+          ],
           if (item.jarakMeter != null) ...[
             const SizedBox(height: 4),
             Row(

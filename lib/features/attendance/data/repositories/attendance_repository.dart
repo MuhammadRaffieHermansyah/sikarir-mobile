@@ -19,10 +19,24 @@ class AttendanceRepository {
     return service.getAttendanceSummaryReport(token);
   }
 
-  Future<AttendanceItem> submitAttendance(
+  Future<AttendanceSubmitResult> submitAttendance(
     AttendanceSubmitRequest request, [
     String? token,
   ]) {
     return service.submitAttendance(request, token);
+  }
+
+  Future<AttendanceItem> clockOut({
+    required String absenId,
+    required double latitude,
+    required double longitude,
+    String? token,
+  }) {
+    return service.clockOut(
+      absenId: absenId,
+      latitude: latitude,
+      longitude: longitude,
+      token: token,
+    );
   }
 }

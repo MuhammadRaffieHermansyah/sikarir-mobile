@@ -17,6 +17,9 @@ class AttendanceItem {
   final double? latitude;
   final double? longitude;
   final double? jarakMeter;
+  // Presensi pulang & lampiran (izin/sakit)
+  final double? jarakKeluarMeter;
+  final String? attachmentUrl;
 
   AttendanceItem({
     required this.id,
@@ -34,7 +37,36 @@ class AttendanceItem {
     this.latitude,
     this.longitude,
     this.jarakMeter,
+    this.jarakKeluarMeter,
+    this.attachmentUrl,
   });
+
+  /// Sudah presensi pulang.
+  bool get hasClockedOut => clockOutTime != null && clockOutTime!.isNotEmpty;
+
+  /// Presensi pulang hanya untuk presensi hadir yang belum pulang.
+  bool get canClockOut => status == 'hadir' && !hasClockedOut;
+
+  /// Salinan dengan sebagian field diganti (dipakai saat presensi pulang).
+  AttendanceItem copyWithClockOut(AttendanceItem updated) => AttendanceItem(
+        id: id,
+        userId: userId,
+        classId: classId,
+        className: className,
+        date: date,
+        clockInTime: clockInTime,
+        clockOutTime: updated.clockOutTime,
+        status: status,
+        notes: notes,
+        location: location,
+        photoUrl: photoUrl,
+        roomName: roomName,
+        latitude: latitude,
+        longitude: longitude,
+        jarakMeter: jarakMeter,
+        jarakKeluarMeter: updated.jarakKeluarMeter,
+        attachmentUrl: attachmentUrl,
+      );
 
   factory AttendanceItem.fromMap(Map<String, dynamic> map) {
     return AttendanceItem(
@@ -59,6 +91,11 @@ class AttendanceItem {
       latitude: _toDouble(map['latitude']),
       longitude: _toDouble(map['longitude']),
       jarakMeter: _toDouble(map['jarak_meter']),
+      jarakKeluarMeter: _toDouble(map['jarak_keluar_meter']),
+      attachmentUrl: (() {
+        final raw = map['lampiran_url']?.toString();
+        return (raw != null && raw.isNotEmpty) ? raw : null;
+      })(),
     );
   }
 
@@ -276,6 +313,10 @@ class AttendanceSubmitRequest {
   final double? latitude;
   final double? longitude;
 
+  /// Khusus izin/sakit: akhir rentang tanggal (Y-m-d) dan path berkas lampiran.
+  final String? tanggalSelesai;
+  final String? attachmentPath;
+
   AttendanceSubmitRequest({
     required this.jadwalId,
     required this.pesertaId,
@@ -285,6 +326,8 @@ class AttendanceSubmitRequest {
     this.notes,
     this.latitude,
     this.longitude,
+    this.tanggalSelesai,
+    this.attachmentPath,
   });
 
   Map<String, dynamic> toMap() {
@@ -297,6 +340,24 @@ class AttendanceSubmitRequest {
       if (notes != null && notes!.isNotEmpty) 'keterangan': notes,
       if (latitude != null) 'latitude': latitude,
       if (longitude != null) 'longitude': longitude,
+      if (tanggalSelesai != null && tanggalSelesai!.isNotEmpty)
+        'tanggal_selesai': tanggalSelesai,
     };
   }
+}
+
+/// Hasil submit presensi. Satu item untuk presensi biasa; beberapa item untuk
+/// rentang izin/sakit (satu catatan per hari pelatihan).
+class AttendanceSubmitResult {
+  final List<AttendanceItem> items;
+
+  /// Tanggal (Y-m-d) yang dilewati server karena sudah tercatat.
+  final List<String> skippedDates;
+  final String? message;
+
+  const AttendanceSubmitResult({
+    required this.items,
+    this.skippedDates = const [],
+    this.message,
+  });
 }

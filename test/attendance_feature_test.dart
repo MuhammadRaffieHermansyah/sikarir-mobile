@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 
@@ -60,7 +61,8 @@ class FakeAttendanceRepository extends AttendanceRepository {
       (_) async => const AttendancePage(items: [], hasMore: false);
   Future<AttendanceItem?> Function() onToday = () async => null;
   Future<AttendanceRekap?> Function() onRekap = () async => null;
-  Future<AttendanceItem> Function(AttendanceSubmitRequest r)? onSubmit;
+  Future<AttendanceSubmitResult> Function(AttendanceSubmitRequest r)? onSubmit;
+  Future<AttendanceItem> Function(String absenId)? onClockOut;
   int submitCalls = 0;
 
   @override
@@ -75,14 +77,43 @@ class FakeAttendanceRepository extends AttendanceRepository {
       onRekap();
 
   @override
-  Future<AttendanceItem> submitAttendance(
+  Future<AttendanceSubmitResult> submitAttendance(
     AttendanceSubmitRequest request, [
     String? token,
   ]) {
     submitCalls++;
     return onSubmit!(request);
   }
+
+  @override
+  Future<AttendanceItem> clockOut({
+    required String absenId,
+    required double latitude,
+    required double longitude,
+    String? token,
+  }) =>
+      onClockOut!(absenId);
 }
+
+AttendanceSubmitResult _result(List<AttendanceItem> items,
+        {List<String> skipped = const [], String? message}) =>
+    AttendanceSubmitResult(items: items, skippedDates: skipped, message: message);
+
+AttendanceSubmitRequest _request({
+  String status = 'hadir',
+  String tanggal = '2026-11-24',
+  String? tanggalSelesai,
+  String? attachmentPath,
+}) =>
+    AttendanceSubmitRequest(
+      jadwalId: '1',
+      pesertaId: '7',
+      tanggal: tanggal,
+      jamHadir: '09:00',
+      status: status,
+      tanggalSelesai: tanggalSelesai,
+      attachmentPath: attachmentPath,
+    );
 
 void main() {
   group('attendance_formatters', () {
@@ -378,7 +409,7 @@ void main() {
         sentBody = json.decode(req.body) as Map<String, dynamic>;
         return _json({'data': _absen(id: 9)}, 201);
       }).submitAttendance(request, 'tok');
-      expect(ok.id, '9');
+      expect(ok.items.single.id, '9');
       expect(sentBody['status_kehadiran'], 'hadir');
       expect(sentBody['latitude'], -8.1);
 
@@ -552,14 +583,9 @@ void main() {
     });
 
     test('submit sukses menambah riwayat & menandai today', () async {
-      repo.onSubmit = (_) async => AttendanceItem.fromMap(_absen(id: 50));
-      await provider.submitAttendance(AttendanceSubmitRequest(
-        jadwalId: '1',
-        pesertaId: '7',
-        tanggal: '2026-11-24',
-        jamHadir: '09:00',
-        status: 'hadir',
-      ));
+      repo.onSubmit =
+          (_) async => _result([AttendanceItem.fromMap(_absen(id: 50))]);
+      await provider.submitAttendance(_request());
 
       expect(provider.todayAttendance?.id, '50');
       expect(provider.allAttendanceList.first.id, '50');
@@ -572,17 +598,215 @@ void main() {
           'Sudah tercatat', AttendanceErrorType.validation, 422);
 
       await expectLater(
-        provider.submitAttendance(AttendanceSubmitRequest(
-          jadwalId: '1',
-          pesertaId: '7',
-          tanggal: '2026-11-24',
-          jamHadir: '09:00',
-          status: 'hadir',
-        )),
+        provider.submitAttendance(_request()),
         throwsA(isA<AttendanceException>()),
       );
       expect(provider.isSubmitting, isFalse);
       expect(provider.allAttendanceList, isEmpty);
+    });
+
+    test('submit rentang menambah semua catatan (terbaru di atas) & today', () async {
+      repo.onSubmit = (_) async => _result([
+            AttendanceItem.fromMap(_absen(id: 1, tanggal: '2026-11-23', status: 'izin')),
+            AttendanceItem.fromMap(_absen(id: 2, tanggal: '2026-11-24', status: 'izin')),
+            AttendanceItem.fromMap(_absen(id: 3, tanggal: '2026-11-26', status: 'izin')),
+          ], skipped: ['2026-11-25'], message: '3 hari presensi berhasil dicatat.');
+
+      final result = await provider.submitAttendance(
+          _request(status: 'izin', tanggal: '2026-11-23', tanggalSelesai: '2026-11-26'));
+
+      expect(provider.allAttendanceList.map((e) => e.id), ['3', '2', '1']);
+      expect(provider.todayAttendance?.id, '2'); // 24 Nov = hari ini (clock palsu)
+      expect(result.skippedDates, ['2026-11-25']);
+    });
+
+    test('submit kedua saat yang pertama berjalan ditolak (anti ganda)', () async {
+      final gate = Completer<AttendanceSubmitResult>();
+      repo.onSubmit = (_) => gate.future;
+
+      final first = provider.submitAttendance(_request());
+      await expectLater(
+        provider.submitAttendance(_request()),
+        throwsA(isA<AttendanceException>()),
+      );
+
+      gate.complete(_result([AttendanceItem.fromMap(_absen(id: 1))]));
+      await first;
+      expect(repo.submitCalls, 1);
+    });
+
+    test('clockOut memperbarui catatan di riwayat & today', () async {
+      repo.onPage = (_) async => AttendancePage(
+          items: [AttendanceItem.fromMap(_absen(id: 5))], hasMore: false);
+      repo.onToday = () async => AttendanceItem.fromMap(_absen(id: 5));
+      await provider.fetchAttendanceData();
+      expect(provider.todayAttendance!.canClockOut, isTrue);
+
+      repo.onClockOut = (_) async => AttendanceItem.fromMap(
+          {..._absen(id: 5), 'jam_keluar': '16:00:00', 'jarak_keluar_meter': 12.5});
+
+      await provider.clockOut(absenId: '5', latitude: -8.1, longitude: 113.7);
+
+      expect(provider.todayAttendance!.clockOutTime, '16:00:00');
+      expect(provider.todayAttendance!.canClockOut, isFalse);
+      expect(provider.allAttendanceList.single.jarakKeluarMeter, 12.5);
+      // data presensi masuk tidak berubah
+      expect(provider.allAttendanceList.single.clockInTime, '08:00');
+      expect(provider.isSubmitting, isFalse);
+    });
+
+    test('clockOut gagal: state tidak berubah & error diteruskan', () async {
+      repo.onPage = (_) async => AttendancePage(
+          items: [AttendanceItem.fromMap(_absen(id: 5))], hasMore: false);
+      await provider.fetchAttendanceData();
+
+      repo.onClockOut = (_) async => throw const AttendanceException(
+          'Anda berada 250 meter dari lokasi.', AttendanceErrorType.validation, 403);
+
+      await expectLater(
+        provider.clockOut(absenId: '5', latitude: 0, longitude: 0),
+        throwsA(isA<AttendanceException>()),
+      );
+      expect(provider.allAttendanceList.single.hasClockedOut, isFalse);
+      expect(provider.isSubmitting, isFalse);
+    });
+  });
+
+  group('Presensi pulang, lampiran, rentang (model)', () {
+    test('fromMap membaca jam_keluar, jarak_keluar_meter, lampiran_url', () {
+      final item = AttendanceItem.fromMap({
+        ..._absen(id: 1),
+        'jam_keluar': '16:00:00',
+        'jarak_keluar_meter': '18.25',
+        'lampiran_url': 'http://x/storage/absen-lampiran/a.jpg',
+      });
+      expect(item.hasClockedOut, isTrue);
+      expect(item.canClockOut, isFalse);
+      expect(item.jarakKeluarMeter, 18.25);
+      expect(item.attachmentUrl, 'http://x/storage/absen-lampiran/a.jpg');
+    });
+
+    test('canClockOut hanya untuk hadir yang belum pulang; lampiran kosong → null', () {
+      expect(AttendanceItem.fromMap(_absen(id: 1)).canClockOut, isTrue);
+      expect(AttendanceItem.fromMap(_absen(id: 1, status: 'izin')).canClockOut, isFalse);
+      expect(AttendanceItem.fromMap({..._absen(id: 1), 'lampiran_url': ''}).attachmentUrl, isNull);
+    });
+
+    test('toMap menyertakan tanggal_selesai hanya bila ada', () {
+      expect(_request(tanggalSelesai: '2026-11-26').toMap()['tanggal_selesai'], '2026-11-26');
+      expect(_request().toMap().containsKey('tanggal_selesai'), isFalse);
+    });
+
+    test('formatApiTimeLabel & formatDateRangeLabel', () {
+      expect(formatApiTimeLabel('08:05:00'), '08:05');
+      expect(formatApiTimeLabel('08:05'), '08:05');
+      expect(formatApiTimeLabel('-'), '-');
+      expect(formatDateRangeLabel(DateTime(2026, 11, 24), DateTime(2026, 11, 24)),
+          '24 November 2026');
+      expect(formatDateRangeLabel(DateTime(2026, 11, 24), DateTime(2026, 11, 26)),
+          '24 November 2026 – 26 November 2026');
+    });
+  });
+
+  group('AttendanceService pulang, lampiran, rentang', () {
+    test('submit rentang: parse daftar catatan + dilewati + pesan', () async {
+      final result = await _service((_) async => _json({
+            'data': [
+              _absen(id: 1, tanggal: '2026-11-23', status: 'izin'),
+              _absen(id: 2, tanggal: '2026-11-26', status: 'izin'),
+            ],
+            'message': '2 hari presensi berhasil dicatat.',
+            'dilewati': ['2026-11-24'],
+          }, 201))
+          .submitAttendance(_request(status: 'izin', tanggalSelesai: '2026-11-26'));
+
+      expect(result.items.map((e) => e.id), ['1', '2']);
+      expect(result.skippedDates, ['2026-11-24']);
+      expect(result.message, contains('2 hari'));
+    });
+
+    test('submit dengan lampiran dikirim sebagai multipart + field rentang', () async {
+      final dir = Directory.systemTemp.createTempSync('absen_test');
+      addTearDown(() => dir.deleteSync(recursive: true));
+      final file = File('${dir.path}/surat.jpg')..writeAsBytesSync([1, 2, 3, 4]);
+
+      late http.BaseRequest sent;
+      late String body;
+      final result = await _service((req) async {
+        sent = req;
+        body = req.body;
+        return _json({'data': _absen(id: 9, status: 'sakit')}, 201);
+      }).submitAttendance(
+        _request(
+            status: 'sakit',
+            tanggalSelesai: '2026-11-26',
+            attachmentPath: file.path),
+        'tok',
+      );
+
+      expect(sent.headers['content-type'], startsWith('multipart/form-data'));
+      expect(sent.headers['Authorization'], 'Bearer tok');
+      expect(body, contains('name="lampiran"'));
+      expect(body, contains('filename="surat.jpg"'));
+      expect(body, contains('name="tanggal_selesai"'));
+      expect(body, contains('2026-11-26'));
+      expect(result.items.single.status, 'sakit');
+    });
+
+    test('lampiran yang hilang → AttendanceException, tanpa request', () async {
+      var called = false;
+      await expectLater(
+        _service((_) async {
+          called = true;
+          return _json({});
+        }).submitAttendance(_request(
+            status: 'izin', attachmentPath: '/tidak/ada/surat.jpg')),
+        throwsA(isA<AttendanceException>().having(
+            (e) => e.message, 'message', contains('Berkas lampiran'))),
+      );
+      expect(called, isFalse);
+    });
+
+    test('clockOut: POST /absen/{id}/pulang dengan koordinat, parse hasil', () async {
+      late Uri url;
+      late Map<String, dynamic> sentBody;
+      final item = await _service((req) async {
+        url = req.url;
+        sentBody = json.decode(req.body) as Map<String, dynamic>;
+        return _json({
+          'data': {..._absen(id: 5), 'jam_keluar': '16:00:00'}
+        });
+      }).clockOut(absenId: '5', latitude: -8.1, longitude: 113.7, token: 't');
+
+      expect(url.path, endsWith('/absen/5/pulang'));
+      expect(sentBody, {'latitude': -8.1, 'longitude': 113.7});
+      expect(item.clockOutTime, '16:00:00');
+    });
+
+    test('clockOut: 403 (di luar radius) & 422 memakai pesan server', () async {
+      await expectLater(
+        _service((_) async => _json(
+                {'message': 'Anda berada 250 meter dari lokasi pelatihan.'}, 403))
+            .clockOut(absenId: '5', latitude: 0, longitude: 0),
+        throwsA(isA<AttendanceException>()
+            .having((e) => e.message, 'message', contains('250 meter'))
+            .having((e) => e.type, 'type', AttendanceErrorType.validation)),
+      );
+      await expectLater(
+        _service((_) async => _json({'message': 'Presensi pulang sudah tercatat.'}, 422))
+            .clockOut(absenId: '5', latitude: 0, longitude: 0),
+        throwsA(isA<AttendanceException>()
+            .having((e) => e.message, 'message', 'Presensi pulang sudah tercatat.')),
+      );
+    });
+
+    test('clockOut: 401 → unauthorized', () async {
+      await expectLater(
+        _service((_) async => _json({}, 401))
+            .clockOut(absenId: '5', latitude: 0, longitude: 0),
+        throwsA(isA<AttendanceException>()
+            .having((e) => e.type, 'type', AttendanceErrorType.unauthorized)),
+      );
     });
   });
 
