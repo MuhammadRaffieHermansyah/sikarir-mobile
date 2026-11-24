@@ -1,5 +1,49 @@
+import 'dart:async';
 import 'dart:math';
 import 'package:geolocator/geolocator.dart';
+
+/// Titik presensi (lokasi pelatihan) beserta radius yang diizinkan.
+class AttendanceTarget {
+  final double latitude;
+  final double longitude;
+  final int radiusMeter;
+  final String label;
+
+  const AttendanceTarget({
+    required this.latitude,
+    required this.longitude,
+    required this.radiusMeter,
+    required this.label,
+  });
+
+  /// Lokasi default BLK Jember (dipakai bila jadwal belum punya koordinat).
+  static const defaultTarget = AttendanceTarget(
+    latitude: LocationService.defaultLat,
+    longitude: LocationService.defaultLng,
+    radiusMeter: LocationService.defaultRadius,
+    label: LocationService.defaultLokasiLabel,
+  );
+
+  /// Gunakan koordinat/radius jadwal bila tersedia, selain itu fallback default.
+  factory AttendanceTarget.fromSchedule({
+    double? latitude,
+    double? longitude,
+    int? radiusMeter,
+    String? label,
+  }) {
+    final hasCoords = latitude != null && longitude != null;
+    return AttendanceTarget(
+      latitude: hasCoords ? latitude : LocationService.defaultLat,
+      longitude: hasCoords ? longitude : LocationService.defaultLng,
+      radiusMeter: (radiusMeter != null && radiusMeter > 0)
+          ? radiusMeter
+          : LocationService.defaultRadius,
+      label: (label != null && label.trim().isNotEmpty)
+          ? label
+          : LocationService.defaultLokasiLabel,
+    );
+  }
+}
 
 /// Service untuk menangani GPS dan validasi lokasi presensi.
 class LocationService {
@@ -9,13 +53,18 @@ class LocationService {
   static const int defaultRadius = 100; // meter
   static const String defaultLokasiLabel = 'BLK Jember, Jl. Basuki Rahmat No. 203';
 
+  /// Akurasi GPS terburuk yang diterima (meter). Di atas ini, posisi dianggap
+  /// tidak cukup andal untuk memvalidasi radius.
+  static const double maxAccuracyMeter = 75;
+
   /// Minta izin lokasi dan kembalikan [Position] saat ini.
-  /// Throw [LocationException] jika izin ditolak atau layanan nonaktif.
+  /// Throw [LocationException] jika izin ditolak, layanan nonaktif, timeout,
+  /// lokasi palsu (mock), atau akurasi terlalu rendah.
   static Future<Position> getCurrentPosition() async {
     // Periksa apakah layanan lokasi aktif
-    bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
+    final serviceEnabled = await Geolocator.isLocationServiceEnabled();
     if (!serviceEnabled) {
-      throw LocationException(
+      throw const LocationException(
         'Layanan GPS tidak aktif. Aktifkan GPS di pengaturan perangkat.',
         LocationExceptionType.serviceDisabled,
       );
@@ -27,7 +76,7 @@ class LocationService {
     if (permission == LocationPermission.denied) {
       permission = await Geolocator.requestPermission();
       if (permission == LocationPermission.denied) {
-        throw LocationException(
+        throw const LocationException(
           'Izin lokasi ditolak. Berikan izin lokasi untuk dapat melakukan presensi.',
           LocationExceptionType.permissionDenied,
         );
@@ -35,20 +84,50 @@ class LocationService {
     }
 
     if (permission == LocationPermission.deniedForever) {
-      throw LocationException(
+      throw const LocationException(
         'Izin lokasi ditolak secara permanen. Buka pengaturan aplikasi untuk mengaktifkan izin lokasi.',
         LocationExceptionType.permissionDeniedForever,
       );
     }
 
-    // Ambil posisi saat ini
-    return await Geolocator.getCurrentPosition(
-      locationSettings: const LocationSettings(
-        accuracy: LocationAccuracy.high,
-        timeLimit: Duration(seconds: 15),
-      ),
-    );
+    final Position position;
+    try {
+      position = await Geolocator.getCurrentPosition(
+        locationSettings: const LocationSettings(
+          accuracy: LocationAccuracy.high,
+          timeLimit: Duration(seconds: 15),
+        ),
+      );
+    } on TimeoutException {
+      throw const LocationException(
+        'Gagal mendapatkan sinyal GPS tepat waktu. Pindah ke area terbuka lalu coba lagi.',
+        LocationExceptionType.timeout,
+      );
+    }
+
+    if (position.isMocked) {
+      throw const LocationException(
+        'Terdeteksi penggunaan lokasi palsu (mock location). Nonaktifkan aplikasi lokasi palsu untuk melakukan presensi.',
+        LocationExceptionType.mockLocation,
+      );
+    }
+
+    if (position.accuracy > maxAccuracyMeter) {
+      throw LocationException(
+        'Akurasi GPS terlalu rendah (±${position.accuracy.toStringAsFixed(0)} m). '
+        'Pindah ke area terbuka lalu coba lagi.',
+        LocationExceptionType.lowAccuracy,
+      );
+    }
+
+    return position;
   }
+
+  /// Buka pengaturan aplikasi (untuk izin yang ditolak permanen).
+  static Future<bool> openAppSettings() => Geolocator.openAppSettings();
+
+  /// Buka pengaturan layanan lokasi/GPS perangkat.
+  static Future<bool> openLocationSettings() => Geolocator.openLocationSettings();
 
   /// Hitung jarak (meter) antara dua titik GPS menggunakan rumus Haversine.
   static double hitungJarak({
@@ -88,8 +167,21 @@ class LocationService {
       isValid: jarak <= radiusMeter,
       latitude: position.latitude,
       longitude: position.longitude,
+      accuracyMeter: position.accuracy,
     );
   }
+
+  /// Versi praktis: validasi terhadap [AttendanceTarget].
+  static LocationCheckResult cekTerhadapTarget(
+    Position position,
+    AttendanceTarget target,
+  ) =>
+      cekLokasiValid(
+        position: position,
+        targetLat: target.latitude,
+        targetLng: target.longitude,
+        radiusMeter: target.radiusMeter,
+      );
 
   static double _toRad(double deg) => deg * pi / 180;
 }
@@ -100,6 +192,7 @@ class LocationCheckResult {
   final bool isValid;
   final double latitude;
   final double longitude;
+  final double? accuracyMeter;
 
   const LocationCheckResult({
     required this.jarakMeter,
@@ -107,6 +200,7 @@ class LocationCheckResult {
     required this.isValid,
     required this.latitude,
     required this.longitude,
+    this.accuracyMeter,
   });
 
   String get jarakLabel {
@@ -122,6 +216,8 @@ enum LocationExceptionType {
   permissionDenied,
   permissionDeniedForever,
   timeout,
+  mockLocation,
+  lowAccuracy,
   unknown,
 }
 
@@ -134,4 +230,3 @@ class LocationException implements Exception {
   @override
   String toString() => message;
 }
-
