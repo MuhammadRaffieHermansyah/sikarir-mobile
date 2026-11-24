@@ -45,7 +45,7 @@ class AttendanceItem {
       date: (map['tanggal'] ?? map['date'] ?? '').toString(),
       clockInTime: map['jam_hadir']?.toString() ?? map['jam_masuk']?.toString() ?? map['clock_in']?.toString(),
       clockOutTime: map['jam_keluar']?.toString() ?? map['clock_out']?.toString(),
-      status: (map['status_kehadiran'] ?? map['status'] ?? 'hadir').toString().toLowerCase(),
+      status: normalizeStatus(map['status_kehadiran'] ?? map['status'] ?? 'hadir'),
       notes: map['keterangan']?.toString() ?? map['notes']?.toString(),
       location: map['lokasi']?.toString() ?? map['location']?.toString(),
       photoUrl: (() {
@@ -60,6 +60,13 @@ class AttendanceItem {
       longitude: _toDouble(map['longitude']),
       jarakMeter: _toDouble(map['jarak_meter']),
     );
+  }
+
+  /// Samakan penulisan status dari API ('alpa' / 'alpha' / huruf besar) ke
+  /// satu bentuk baku: hadir, izin, sakit, alpha.
+  static String normalizeStatus(Object? raw) {
+    final s = raw.toString().trim().toLowerCase();
+    return s == 'alpa' ? 'alpha' : s;
   }
 
   static String _resolveClassName(Map<String, dynamic> map) {
@@ -111,6 +118,10 @@ class AttendanceItem {
 }
 
 class AttendanceSummary {
+  /// Batas minimal kehadiran (%) untuk mengikuti uji kompetensi (fallback
+  /// jika server tidak mengirim `memenuhi_syarat`).
+  static const double minimumPercentage = 80;
+
   final int totalPresent;
   final int totalPermission;
   final int totalSick;
@@ -124,6 +135,15 @@ class AttendanceSummary {
     required this.totalAbsent,
     required this.attendancePercentage,
   });
+
+  int get totalRecords =>
+      totalPresent + totalPermission + totalSick + totalAbsent;
+
+  /// `false` bila belum ada satu pun catatan presensi.
+  bool get hasData => totalRecords > 0;
+
+  bool get meetsMinimum =>
+      hasData && attendancePercentage >= minimumPercentage;
 
   factory AttendanceSummary.fromList(List<AttendanceItem> list) {
     int present = 0;
@@ -145,7 +165,8 @@ class AttendanceSummary {
     }
 
     final totalDays = present + permission + sick + absent;
-    final pct = totalDays > 0 ? (present / totalDays) * 100 : 100.0;
+    // Tanpa data → 0%, bukan 100% (agar tidak tampak "memenuhi syarat").
+    final pct = totalDays > 0 ? (present / totalDays) * 100 : 0.0;
 
     return AttendanceSummary(
       totalPresent: present,
@@ -155,6 +176,94 @@ class AttendanceSummary {
       attendancePercentage: pct,
     );
   }
+}
+
+/// Rekapitulasi kehadiran & status kelayakan dari endpoint `/absen/rekap`.
+class AttendanceRekap {
+  final bool? memenuhiSyarat;
+  final String? statusKelayakan;
+  final double? persentase;
+  final double? minimalPersentase;
+  final int? totalHadir;
+  final int? totalIzin;
+  final int? totalSakit;
+  final int? totalAlpha;
+
+  const AttendanceRekap({
+    this.memenuhiSyarat,
+    this.statusKelayakan,
+    this.persentase,
+    this.minimalPersentase,
+    this.totalHadir,
+    this.totalIzin,
+    this.totalSakit,
+    this.totalAlpha,
+  });
+
+  /// Kontrak backend (`GET /absen/rekap` → `data.summary`):
+  /// total_hadir, total_izin, total_sakit, total_alpha, total_sesi,
+  /// persentase_hadir, syarat_persentase, status_kelayakan, memenuhi_syarat.
+  factory AttendanceRekap.fromMap(Map<String, dynamic> data) {
+    final summary = data['summary'] is Map<String, dynamic>
+        ? data['summary'] as Map<String, dynamic>
+        : data;
+    final memenuhi = summary['memenuhi_syarat'];
+    return AttendanceRekap(
+      memenuhiSyarat: memenuhi is bool
+          ? memenuhi
+          : (memenuhi == null
+              ? null
+              : (memenuhi.toString() == '1' || memenuhi.toString() == 'true')),
+      statusKelayakan: summary['status_kelayakan']?.toString(),
+      persentase: AttendanceItem._toDouble(
+          summary['persentase_hadir'] ?? summary['persentase_kehadiran'] ?? summary['persentase']),
+      minimalPersentase: AttendanceItem._toDouble(summary['syarat_persentase'] ??
+          summary['minimal_persentase'] ??
+          summary['minimal_kehadiran']),
+      totalHadir: _toInt(summary['total_hadir']),
+      totalIzin: _toInt(summary['total_izin']),
+      totalSakit: _toInt(summary['total_sakit']),
+      totalAlpha: _toInt(summary['total_alpha']),
+    );
+  }
+
+  static int? _toInt(dynamic v) {
+    if (v == null) return null;
+    if (v is num) return v.toInt();
+    return int.tryParse(v.toString());
+  }
+
+  /// Ringkasan dari angka server (mencakup SEMUA riwayat, bukan hanya
+  /// halaman pertama). `null` bila server tidak mengirim hitungan.
+  AttendanceSummary? toSummary() {
+    if (totalHadir == null &&
+        totalIzin == null &&
+        totalSakit == null &&
+        totalAlpha == null) {
+      return null;
+    }
+    final hadir = totalHadir ?? 0;
+    final izin = totalIzin ?? 0;
+    final sakit = totalSakit ?? 0;
+    final alpha = totalAlpha ?? 0;
+    final total = hadir + izin + sakit + alpha;
+    return AttendanceSummary(
+      totalPresent: hadir,
+      totalPermission: izin,
+      totalSick: sakit,
+      totalAbsent: alpha,
+      attendancePercentage:
+          persentase ?? (total > 0 ? hadir / total * 100 : 0.0),
+    );
+  }
+}
+
+/// Satu halaman riwayat presensi (backend: `paginate(15)`).
+class AttendancePage {
+  final List<AttendanceItem> items;
+  final bool hasMore;
+
+  const AttendancePage({required this.items, required this.hasMore});
 }
 
 class AttendanceSubmitRequest {

@@ -1,15 +1,29 @@
-import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:sikarir/core/constants/app_theme.dart';
 import 'package:sikarir/features/attendance/data/models/attendance_model.dart';
-import 'package:sikarir/features/attendance/data/services/attendance_service.dart';
 import 'package:sikarir/features/attendance/data/services/location_service.dart';
 import 'package:sikarir/features/attendance/presentation/providers/attendance_provider.dart';
+import 'package:sikarir/features/attendance/presentation/widgets/attendance_cards.dart';
+import 'package:sikarir/features/attendance/presentation/widgets/attendance_clock_card.dart';
+import 'package:sikarir/features/attendance/presentation/widgets/attendance_stat_row.dart';
+import 'package:sikarir/features/attendance/presentation/widgets/izin_sakit_sheet.dart';
+import 'package:sikarir/features/attendance/presentation/widgets/location_check_sheet.dart';
+import 'package:sikarir/features/attendance/utils/attendance_formatters.dart';
 import 'package:sikarir/features/auth/presentation/providers/auth_provider.dart';
 import 'package:sikarir/features/profile/presentation/providers/peserta_provider.dart';
+import 'package:sikarir/features/training/data/models/training_class_model.dart';
 import 'package:sikarir/features/training/presentation/providers/training_class_provider.dart';
 
+/// Target presensi untuk sebuah kelas: koordinat/radius jadwal bila ada,
+/// selain itu default BLK.
+AttendanceTarget _targetFor(TrainingClassModel c) =>
+    AttendanceTarget.fromSchedule(
+      latitude: c.latitude,
+      longitude: c.longitude,
+      radiusMeter: c.radiusMeter,
+      label: c.room == 'Workshop BLK' ? null : c.room,
+    );
 
 class AttendanceScreen extends StatefulWidget {
   const AttendanceScreen({super.key});
@@ -20,18 +34,13 @@ class AttendanceScreen extends StatefulWidget {
 
 class _AttendanceScreenState extends State<AttendanceScreen>
     with SingleTickerProviderStateMixin {
-  late TabController _tabController;
-  late Timer _timer;
-  DateTime _currentTime = DateTime.now();
-  final _svc = AttendanceService();
+  late final TabController _tabController;
+  String? _selectedJadwalId;
 
   @override
   void initState() {
     super.initState();
     _tabController = TabController(length: 2, vsync: this);
-    _timer = Timer.periodic(const Duration(seconds: 1), (_) {
-      if (mounted) setState(() => _currentTime = DateTime.now());
-    });
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
       final token = context.read<AuthProvider>().user?.token;
@@ -44,74 +53,84 @@ class _AttendanceScreenState extends State<AttendanceScreen>
   @override
   void dispose() {
     _tabController.dispose();
-    _timer.cancel();
     super.dispose();
   }
 
-  // ─── Helpers ────────────────────────────────────────────────────────────
+  // ─── Jadwal aktif ───────────────────────────────────────────────────────
 
-  String _pad(int n) => n.toString().padLeft(2, '0');
+  /// Kelas yang sedang berlangsung dan punya id jadwal.
+  List<TrainingClassModel> _activeClasses(TrainingClassProvider p) => p
+      .allClasses
+      .where((c) => c.jadwalId.isNotEmpty && c.status == 'berlangsung')
+      .toList();
 
-  String get _timeString =>
-      '${_pad(_currentTime.hour)}:${_pad(_currentTime.minute)}:${_pad(_currentTime.second)}';
-
-  String get _dateString {
-    const days = ['Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu', 'Minggu'];
-    const months = [
-      'Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni',
-      'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'
-    ];
-    final d = _currentTime;
-    return '${days[d.weekday - 1]}, ${d.day} ${months[d.month - 1]} ${d.year}';
+  /// Kelas terpilih (default: kelas aktif pertama). `null` bila tak ada.
+  TrainingClassModel? _selectedClassOf(List<TrainingClassModel> active) {
+    if (active.isEmpty) return null;
+    return active.firstWhere(
+      (c) => c.jadwalId == _selectedJadwalId,
+      orElse: () => active.first,
+    );
   }
 
-  // ─── Location Check + Presensi ──────────────────────────────────────────
+  String? get _token => context.read<AuthProvider>().user?.token;
 
-  Future<void> _handlePresensiHadir(BuildContext ctx) async {
+  Future<void> _refresh() async {
+    final token = _token;
+    await Future.wait([
+      context.read<AttendanceProvider>().fetchAttendanceData(token),
+      context.read<TrainingClassProvider>().fetchClasses(token),
+    ]);
+  }
+
+  String _resolvePesertaId() {
+    final profile = context.read<PesertaProvider>().profile;
+    return (profile?.idPeserta.isNotEmpty == true)
+        ? profile!.idPeserta
+        : (context.read<AuthProvider>().user?.userId ?? '');
+  }
+
+  // ─── Aksi presensi ──────────────────────────────────────────────────────
+
+  Future<void> _handlePresensiHadir(
+      BuildContext ctx, TrainingClassModel kelas) async {
     final provider = ctx.read<AttendanceProvider>();
-    final authProvider = ctx.read<AuthProvider>();
-    final token = authProvider.user?.token;
-    final pesertaProvider = ctx.read<PesertaProvider>();
-    final pesertaId = (pesertaProvider.profile?.idPeserta.isNotEmpty == true) ? pesertaProvider.profile!.idPeserta : (authProvider.user?.userId ?? '');
+    final token = _token;
+    final pesertaId = _resolvePesertaId();
 
-    // Tampilkan bottom sheet proses cek lokasi
-    if (!mounted) return;
     await showModalBottomSheet(
       context: ctx,
       isDismissible: false,
       enableDrag: false,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
-      builder: (_) => _LocationCheckSheet(
+      builder: (_) => LocationCheckSheet(
         provider: provider,
         token: token,
         pesertaId: pesertaId,
-        svc: _svc,
-        currentTime: _currentTime,
+        jadwalId: kelas.jadwalId,
+        target: _targetFor(kelas),
       ),
     );
-    // Refresh setelah modal ditutup
     if (mounted) provider.fetchAttendanceData(token);
   }
 
-  Future<void> _handleIzinSakit(BuildContext ctx, String type) async {
+  Future<void> _handleIzinSakit(
+      BuildContext ctx, String type, TrainingClassModel kelas) async {
     final provider = ctx.read<AttendanceProvider>();
-    final authProvider = ctx.read<AuthProvider>();
-    final token = authProvider.user?.token;
-    final pesertaProvider = ctx.read<PesertaProvider>();
-    final pesertaId = (pesertaProvider.profile?.idPeserta.isNotEmpty == true) ? pesertaProvider.profile!.idPeserta : (authProvider.user?.userId ?? '');
+    final token = _token;
+    final pesertaId = _resolvePesertaId();
 
     await showModalBottomSheet(
       context: ctx,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
-      builder: (_) => _IzinSakitSheet(
+      builder: (_) => IzinSakitSheet(
         type: type,
         provider: provider,
         token: token,
         pesertaId: pesertaId,
-        svc: _svc,
-        currentTime: _currentTime,
+        jadwalId: kelas.jadwalId,
       ),
     );
     if (mounted) provider.fetchAttendanceData(token);
@@ -168,302 +187,179 @@ class _AttendanceScreenState extends State<AttendanceScreen>
   // ─── Tab 1: Hari Ini ────────────────────────────────────────────────────
 
   Widget _buildTodayTab() {
-    return Consumer<AttendanceProvider>(
-      builder: (context, provider, _) {
-        final today = provider.todayAttendance;
-        final sudahAbsen = today != null;
+    return Consumer2<AttendanceProvider, TrainingClassProvider>(
+      builder: (context, provider, classProvider, _) {
+        final active = _activeClasses(classProvider);
+        final kelas = _selectedClassOf(active);
+        final today = kelas != null
+            ? provider.todayRecordFor(kelas.jadwalId)
+            : provider.todayAttendance;
+        final target =
+            kelas != null ? _targetFor(kelas) : AttendanceTarget.defaultTarget;
+        // Status hari ini belum diketahui (loading / gagal) → jangan izinkan absen.
+        final todayUnknown = !provider.todayLoaded;
 
-        return SingleChildScrollView(
-          padding: const EdgeInsets.all(16),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              // Jam digital
-              _buildClockCard(),
-              const SizedBox(height: 14),
-
-              // Statistik
-              _buildStatRow(provider.summary),
-              const SizedBox(height: 14),
-
-              // Status hari ini
-              if (sudahAbsen) ...[
-                _buildTodayStatusCard(today),
+        return RefreshIndicator(
+          color: AppColors.primary,
+          onRefresh: _refresh,
+          child: SingleChildScrollView(
+            physics: const AlwaysScrollableScrollPhysics(),
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                const AttendanceClockCard(),
                 const SizedBox(height: 14),
+                AttendanceStatRow(
+                  summary: provider.summary,
+                  percentage: provider.attendancePercentage,
+                ),
+                const SizedBox(height: 14),
+                if (provider.errorMessage != null) ...[
+                  AttendanceErrorCard(
+                      message: provider.errorMessage!, onRetry: _refresh),
+                  const SizedBox(height: 14),
+                ],
+                if (today != null) ...[
+                  AttendanceTodayStatusCard(today: today),
+                  const SizedBox(height: 14),
+                ],
+                if (active.length > 1 && today == null) ...[
+                  _buildClassSelector(active, kelas!),
+                  const SizedBox(height: 14),
+                ],
+                AttendanceLocationCard(target: target),
+                const SizedBox(height: 20),
+                ..._buildActions(
+                  context,
+                  provider: provider,
+                  classProvider: classProvider,
+                  kelas: kelas,
+                  hasActive: active.isNotEmpty,
+                  alreadyDone: today != null,
+                  todayUnknown: todayUnknown,
+                ),
               ],
-
-              // Lokasi (info card)
-              _buildLokasiInfoCard(),
-              const SizedBox(height: 20),
-
-              // Tombol Presensi
-              if (!sudahAbsen) ...[
-                _buildPresensiButton(context),
-                const SizedBox(height: 10),
-                _buildIzinSakitRow(context),
-              ] else ...[
-                _buildSudahAbsenInfo(today),
-              ],
-            ],
+            ),
           ),
         );
       },
     );
   }
 
-  Widget _buildClockCard() {
-    return Container(
-      padding: const EdgeInsets.symmetric(vertical: 22, horizontal: 20),
-      decoration: BoxDecoration(
-        gradient: const LinearGradient(
-          colors: [AppColors.primary, Color(0xFF1A7A5E)],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
-        borderRadius: BorderRadius.circular(20),
-      ),
-      child: Column(
-        children: [
-          Text(
-            _timeString,
-            style: const TextStyle(
-              fontSize: 44,
-              fontWeight: FontWeight.w900,
-              color: Colors.white,
-              letterSpacing: 2,
-            ),
-          ),
-          const SizedBox(height: 4),
-          Text(
-            _dateString,
-            style: const TextStyle(
-              fontSize: 13,
-              color: Colors.white70,
-              fontWeight: FontWeight.w500,
-            ),
-          ),
-        ],
+  List<Widget> _buildActions(
+    BuildContext context, {
+    required AttendanceProvider provider,
+    required TrainingClassProvider classProvider,
+    required TrainingClassModel? kelas,
+    required bool hasActive,
+    required bool alreadyDone,
+    required bool todayUnknown,
+  }) {
+    const spinner = Center(
+      child: Padding(
+        padding: EdgeInsets.all(12),
+        child: CircularProgressIndicator(color: AppColors.primary),
       ),
     );
-  }
 
-  Widget _buildStatRow(AttendanceSummary summary) {
-    final total = summary.totalPresent +
-        summary.totalPermission +
-        summary.totalSick +
-        summary.totalAbsent;
-    final pct = total > 0 ? (summary.totalPresent / total) * 100 : 100.0;
-
-    return Column(
-      children: [
-        Row(
-          children: [
-            _buildStatCard('Hadir', summary.totalPresent.toString(),
-                AppColors.mintDark, AppColors.mintBg, Icons.check_circle_outline_rounded),
-            _buildStatCard('Izin', summary.totalPermission.toString(),
-                AppColors.orangeText, AppColors.orangeLight, Icons.mail_outline_rounded),
-            _buildStatCard('Sakit', summary.totalSick.toString(),
-                Colors.blue.shade700, Colors.blue.shade50, Icons.healing_rounded),
-            _buildStatCard('Alpa', summary.totalAbsent.toString(),
-                Colors.red.shade700, Colors.red.shade50, Icons.cancel_outlined),
-          ],
+    if (alreadyDone) {
+      return const [
+        AttendanceInfoNote(
+          icon: Icons.info_outline_rounded,
+          text: 'Anda sudah melakukan presensi hari ini.',
         ),
-        const SizedBox(height: 10),
-        Container(
-          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(12),
-            border: Border.all(color: AppColors.cardBorder),
-          ),
-          child: Row(
-            children: [
-              const Text('Persentase Kehadiran',
-                  style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: AppColors.textSecondary)),
-              const Spacer(),
-              Text('${pct.toStringAsFixed(1)}%',
-                  style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w800, color: AppColors.primary)),
-            ],
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildLokasiInfoCard() {
-    return Container(
-      padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: AppColors.cardBorder),
-      ),
-      child: Row(
-        children: [
-          Container(
-            padding: const EdgeInsets.all(8),
-            decoration: BoxDecoration(
-              color: AppColors.mintBg,
-              borderRadius: BorderRadius.circular(10),
-            ),
-            child: const Icon(Icons.location_on_rounded,
-                color: AppColors.primary, size: 20),
-          ),
-          const SizedBox(width: 12),
-          const Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text('Lokasi Pelatihan',
-                    style: TextStyle(
-                        fontSize: 11,
-                        fontWeight: FontWeight.bold,
-                        color: AppColors.textSecondary)),
-                SizedBox(height: 2),
-                Text(LocationService.defaultLokasiLabel,
-                    style: TextStyle(
-                        fontSize: 12.5,
-                        fontWeight: FontWeight.w700,
-                        color: AppColors.textPrimary)),
-                SizedBox(height: 2),
-                Text('Radius presensi: ${LocationService.defaultRadius} meter',
-                    style: TextStyle(fontSize: 11, color: AppColors.textSecondary)),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildPresensiButton(BuildContext ctx) {
-    return ElevatedButton.icon(
-      onPressed: () => _handlePresensiHadir(ctx),
-      icon: const Icon(Icons.fingerprint_rounded, size: 22),
-      label: const Text(
-        'Presensi Masuk',
-        style: TextStyle(fontSize: 15, fontWeight: FontWeight.w800),
-      ),
-      style: ElevatedButton.styleFrom(
-        backgroundColor: AppColors.primary,
-        foregroundColor: Colors.white,
-        minimumSize: const Size.fromHeight(52),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-        elevation: 0,
-      ),
-    );
-  }
-
-  Widget _buildIzinSakitRow(BuildContext ctx) {
-    return Row(
-      children: [
-        Expanded(
-          child: OutlinedButton.icon(
-            onPressed: () => _handleIzinSakit(ctx, 'izin'),
-            icon: const Icon(Icons.mail_outline_rounded, size: 18),
-            label: const Text('Pengajuan Izin',
-                style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700)),
-            style: OutlinedButton.styleFrom(
-              foregroundColor: AppColors.orangeText,
-              side: const BorderSide(color: AppColors.orangeText),
-              minimumSize: const Size.fromHeight(46),
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-            ),
-          ),
-        ),
-        const SizedBox(width: 10),
-        Expanded(
-          child: OutlinedButton.icon(
-            onPressed: () => _handleIzinSakit(ctx, 'sakit'),
-            icon: const Icon(Icons.healing_rounded, size: 18),
-            label: const Text('Laporan Sakit',
-                style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700)),
-            style: OutlinedButton.styleFrom(
-              foregroundColor: Colors.blue.shade700,
-              side: BorderSide(color: Colors.blue.shade700),
-              minimumSize: const Size.fromHeight(46),
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-            ),
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildTodayStatusCard(AttendanceItem today) {
-    Color bg;
-    Color fg;
-    IconData icon;
-    String label;
-
-    switch (today.status.toLowerCase()) {
-      case 'hadir':
-        bg = AppColors.mintBg; fg = AppColors.mintDark;
-        icon = Icons.check_circle_rounded; label = 'Sudah Hadir';
-        break;
-      case 'izin':
-        bg = AppColors.orangeLight; fg = AppColors.orangeText;
-        icon = Icons.mail_rounded; label = 'Izin Disetujui';
-        break;
-      case 'sakit':
-        bg = Colors.blue.shade50; fg = Colors.blue.shade700;
-        icon = Icons.healing_rounded; label = 'Keterangan Sakit';
-        break;
-      default:
-        bg = Colors.red.shade50; fg = Colors.red.shade700;
-        icon = Icons.cancel_rounded; label = 'Tidak Hadir';
+      ];
     }
-
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: bg,
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: fg.withValues(alpha: 0.3)),
+    if (todayUnknown && provider.isLoading) return const [spinner];
+    if (todayUnknown) {
+      return const [
+        AttendanceInfoNote(
+          icon: Icons.cloud_off_rounded,
+          text: 'Status presensi hari ini belum dapat diperiksa. '
+              'Tarik layar ke bawah atau tekan Coba Lagi.',
+        ),
+      ];
+    }
+    if (classProvider.isLoading && !hasActive) return const [spinner];
+    if (kelas == null) {
+      return const [
+        AttendanceInfoNote(
+          icon: Icons.event_busy_rounded,
+          text: 'Belum ada kelas pelatihan yang sedang berlangsung, '
+              'sehingga presensi belum dapat dilakukan.',
+        ),
+      ];
+    }
+    return [
+      ElevatedButton.icon(
+        onPressed: () => _handlePresensiHadir(context, kelas),
+        icon: const Icon(Icons.fingerprint_rounded, size: 22),
+        label: const Text('Presensi Masuk',
+            style: TextStyle(fontSize: 15, fontWeight: FontWeight.w800)),
+        style: ElevatedButton.styleFrom(
+          backgroundColor: AppColors.primary,
+          foregroundColor: Colors.white,
+          minimumSize: const Size.fromHeight(52),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+          elevation: 0,
+        ),
       ),
-      child: Row(
+      const SizedBox(height: 10),
+      Row(
         children: [
-          Icon(icon, color: fg, size: 28),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(label,
-                    style: TextStyle(fontSize: 14, fontWeight: FontWeight.w800, color: fg)),
-                if (today.clockInTime != null)
-                  Text('Jam masuk: ${today.clockInTime}',
-                      style: TextStyle(fontSize: 12, color: fg.withValues(alpha: 0.8))),
-                if (today.jarakMeter != null)
-                  Text('Jarak saat absen: ${today.jarakMeter!.toStringAsFixed(0)} m',
-                      style: TextStyle(fontSize: 11, color: fg.withValues(alpha: 0.7))),
-              ],
-            ),
-          ),
+          Expanded(child: _izinSakitButton(context, 'izin', kelas)),
+          const SizedBox(width: 10),
+          Expanded(child: _izinSakitButton(context, 'sakit', kelas)),
         ],
+      ),
+    ];
+  }
+
+  Widget _izinSakitButton(
+      BuildContext context, String type, TrainingClassModel kelas) {
+    final isIzin = type == 'izin';
+    final color = isIzin ? AppColors.orangeText : Colors.blue.shade700;
+    return OutlinedButton.icon(
+      onPressed: () => _handleIzinSakit(context, type, kelas),
+      icon: Icon(isIzin ? Icons.mail_outline_rounded : Icons.healing_rounded,
+          size: 18),
+      label: Text(isIzin ? 'Pengajuan Izin' : 'Laporan Sakit',
+          style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700)),
+      style: OutlinedButton.styleFrom(
+        foregroundColor: color,
+        side: BorderSide(color: color),
+        minimumSize: const Size.fromHeight(46),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       ),
     );
   }
 
-  Widget _buildSudahAbsenInfo(AttendanceItem today) {
+  Widget _buildClassSelector(
+      List<TrainingClassModel> active, TrainingClassModel selected) {
     return Container(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 4),
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(14),
         border: Border.all(color: AppColors.cardBorder),
       ),
-      child: const Row(
-        children: [
-          Icon(Icons.info_outline_rounded, color: AppColors.textSecondary),
-          SizedBox(width: 10),
-          Expanded(
-            child: Text(
-              'Anda sudah melakukan presensi hari ini.',
-              style: TextStyle(fontSize: 13, color: AppColors.textSecondary),
-            ),
-          ),
-        ],
+      child: DropdownButtonHideUnderline(
+        child: DropdownButton<String>(
+          isExpanded: true,
+          value: selected.jadwalId,
+          icon: const Icon(Icons.expand_more_rounded),
+          items: active
+              .map((c) => DropdownMenuItem(
+                    value: c.jadwalId,
+                    child: Text(c.title,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(
+                            fontSize: 13, fontWeight: FontWeight.w700)),
+                  ))
+              .toList(),
+          onChanged: (v) => setState(() => _selectedJadwalId = v),
+        ),
       ),
     );
   }
@@ -473,96 +369,141 @@ class _AttendanceScreenState extends State<AttendanceScreen>
   Widget _buildHistoryTab() {
     return Consumer<AttendanceProvider>(
       builder: (context, provider, _) {
-        if (provider.isLoading) {
-          return const Center(child: CircularProgressIndicator(color: AppColors.primary));
+        if (provider.isLoading && !provider.historyLoaded) {
+          return const Center(
+              child: CircularProgressIndicator(color: AppColors.primary));
         }
 
-        final pct = provider.summary.attendancePercentage;
-        final isMemenuhi = pct >= 80;
+        // Gagal memuat & belum pernah ada data → error + retry,
+        // bukan "Belum ada riwayat".
+        if (!provider.historyLoaded && provider.errorMessage != null) {
+          return _buildHistoryError(provider.errorMessage!);
+        }
 
         return Column(
           children: [
-            // Card Rekap Kelayakan Kelulusan
-            Container(
-              margin: const EdgeInsets.fromLTRB(16, 12, 16, 4),
-              padding: const EdgeInsets.all(14),
-              decoration: BoxDecoration(
-                color: isMemenuhi ? AppColors.mintBg : const Color(0xFFFFF7ED),
-                borderRadius: BorderRadius.circular(14),
-                border: Border.all(
-                  color: isMemenuhi ? AppColors.mint : const Color(0xFFFFEDD5),
-                ),
-              ),
-              child: Row(
-                children: [
-                  Container(
-                    padding: const EdgeInsets.all(8),
-                    decoration: BoxDecoration(
-                      color: isMemenuhi ? Colors.white : const Color(0xFFFFEDD5),
-                      shape: BoxShape.circle,
-                    ),
-                    child: Icon(
-                      isMemenuhi ? Icons.verified_user_rounded : Icons.warning_amber_rounded,
-                      color: isMemenuhi ? AppColors.mintDark : const Color(0xFFEA580C),
-                      size: 22,
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          isMemenuhi
-                              ? 'Memenuhi Syarat Sertifikasi (${pct.toStringAsFixed(0)}%)'
-                              : 'Kehadiran Belum Memenuhi (${pct.toStringAsFixed(0)}%)',
-                          style: TextStyle(
-                            fontSize: 13,
-                            fontWeight: FontWeight.w800,
-                            color: isMemenuhi ? AppColors.mintDark : const Color(0xFF9A3412),
-                          ),
-                        ),
-                        const SizedBox(height: 2),
-                        Text(
-                          isMemenuhi
-                              ? 'Tingkat kehadiran Anda memenuhi syarat minimal 80% untuk kelulusan dan uji kompetensi BNSP.'
-                              : 'Syarat minimal kehadiran adalah 80% untuk dapat mengikuti ujian sertifikasi.',
-                          style: TextStyle(
-                            fontSize: 11,
-                            color: isMemenuhi ? AppColors.mintDark.withValues(alpha: 0.8) : const Color(0xFFC2410C),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
-            ),
-
-            // Filter chips
+            _buildEligibilityCard(provider),
             _buildFilterChips(provider),
-            // List
-            Expanded(
-              child: provider.attendanceList.isEmpty
-                  ? const Center(
-                      child: Text('Belum ada riwayat presensi.',
-                          style: TextStyle(color: AppColors.textSecondary, fontSize: 13)))
-                  : ListView.builder(
-                      padding: const EdgeInsets.all(16),
-                      itemCount: provider.attendanceList.length,
-                      itemBuilder: (_, i) =>
-                          _buildHistoryCard(provider.attendanceList[i]),
-                    ),
-            ),
+            Expanded(child: _buildHistoryList(provider)),
           ],
         );
       },
     );
   }
 
+  Widget _buildHistoryError(String message) {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(24),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Icon(Icons.cloud_off_rounded,
+                size: 44, color: AppColors.textSecondary),
+            const SizedBox(height: 12),
+            Text(message,
+                textAlign: TextAlign.center,
+                style: const TextStyle(
+                    fontSize: 13, color: AppColors.textSecondary)),
+            const SizedBox(height: 12),
+            ElevatedButton.icon(
+              onPressed: _refresh,
+              icon: const Icon(Icons.refresh_rounded),
+              label: const Text('Coba Lagi'),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppColors.primary,
+                foregroundColor: Colors.white,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildEligibilityCard(AttendanceProvider provider) {
+    final hasData = provider.hasAttendanceData;
+    final pct = provider.attendancePercentage;
+    final isMemenuhi = provider.memenuhiSyarat == true;
+    final minPct = provider.minimumPercentage.toStringAsFixed(0);
+
+    final title = !hasData
+        ? 'Belum Ada Data Kehadiran'
+        : (provider.statusKelayakan?.isNotEmpty == true
+            ? '${provider.statusKelayakan} (${pct.toStringAsFixed(0)}%)'
+            : (isMemenuhi
+                ? 'Memenuhi Syarat Sertifikasi (${pct.toStringAsFixed(0)}%)'
+                : 'Kehadiran Belum Memenuhi (${pct.toStringAsFixed(0)}%)'));
+    final desc = !hasData
+        ? 'Status kelayakan akan tampil setelah ada catatan presensi. Syarat minimal kehadiran adalah $minPct%.'
+        : (isMemenuhi
+            ? 'Tingkat kehadiran Anda memenuhi syarat minimal $minPct% untuk kelulusan dan uji kompetensi BNSP.'
+            : 'Syarat minimal kehadiran adalah $minPct% untuk dapat mengikuti ujian sertifikasi.');
+
+    const warnBg = Color(0xFFFFF7ED);
+    const warnBorder = Color(0xFFFFEDD5);
+    const warnIcon = Color(0xFFEA580C);
+    const warnTitle = Color(0xFF9A3412);
+    const warnDesc = Color(0xFFC2410C);
+
+    return Container(
+      margin: const EdgeInsets.fromLTRB(16, 12, 16, 4),
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: isMemenuhi ? AppColors.mintBg : warnBg,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: isMemenuhi ? AppColors.mint : warnBorder),
+      ),
+      child: Row(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(8),
+            decoration: BoxDecoration(
+              color: isMemenuhi ? Colors.white : warnBorder,
+              shape: BoxShape.circle,
+            ),
+            child: Icon(
+              isMemenuhi ? Icons.verified_user_rounded : Icons.warning_amber_rounded,
+              color: isMemenuhi ? AppColors.mintDark : warnIcon,
+              size: 22,
+            ),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(title,
+                    style: TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w800,
+                      color: isMemenuhi ? AppColors.mintDark : warnTitle,
+                    )),
+                const SizedBox(height: 2),
+                Text(desc,
+                    style: TextStyle(
+                      fontSize: 11,
+                      color: isMemenuhi
+                          ? AppColors.mintDark.withValues(alpha: 0.8)
+                          : warnDesc,
+                    )),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget _buildFilterChips(AttendanceProvider provider) {
     const filters = ['Semua', 'hadir', 'izin', 'sakit', 'alpha'];
-    const labels = {'Semua': 'Semua', 'hadir': 'Hadir', 'izin': 'Izin', 'sakit': 'Sakit', 'alpha': 'Alpa'};
+    const labels = {
+      'Semua': 'Semua',
+      'hadir': 'Hadir',
+      'izin': 'Izin',
+      'sakit': 'Sakit',
+      'alpha': 'Alpa',
+    };
 
     return Container(
       color: Colors.white,
@@ -599,768 +540,95 @@ class _AttendanceScreenState extends State<AttendanceScreen>
     );
   }
 
-  Widget _buildHistoryCard(AttendanceItem item) {
-    Color badgeBg;
-    Color badgeText;
-    String badgeLabel;
+  /// Daftar riwayat dikelompokkan per bulan, dengan muat-lebih-banyak.
+  Widget _buildHistoryList(AttendanceProvider provider) {
+    final items = provider.attendanceList;
 
-    switch (item.status.toLowerCase()) {
-      case 'hadir':
-        badgeBg = AppColors.mint; badgeText = AppColors.mintDark; badgeLabel = 'Hadir';
-        break;
-      case 'izin':
-        badgeBg = AppColors.peachBg; badgeText = AppColors.orangeText; badgeLabel = 'Izin';
-        break;
-      case 'sakit':
-        badgeBg = Colors.blue.shade50; badgeText = Colors.blue.shade700; badgeLabel = 'Sakit';
-        break;
-      default:
-        badgeBg = Colors.red.shade50; badgeText = Colors.red.shade700; badgeLabel = 'Alpa';
+    // Susun entri: header bulan (String) + item presensi.
+    final entries = <Object>[];
+    String? lastMonth;
+    for (final item in items) {
+      final d = tryParseApiDate(item.date);
+      if (d != null) {
+        final month = formatMonthYear(d);
+        if (month != lastMonth) {
+          entries.add(month);
+          lastMonth = month;
+        }
+      }
+      entries.add(item);
     }
+    final showFooter = provider.hasMore || provider.isLoadingMore;
 
-    return Container(
-      margin: const EdgeInsets.only(bottom: 12),
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: AppColors.cardBorder),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Text(item.date,
-                  style: const TextStyle(
-                      fontSize: 13, fontWeight: FontWeight.w800, color: AppColors.textPrimary)),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                decoration: BoxDecoration(
-                    color: badgeBg, borderRadius: BorderRadius.circular(8)),
-                child: Text(badgeLabel,
-                    style: TextStyle(
-                        fontSize: 11, fontWeight: FontWeight.bold, color: badgeText)),
-              ),
-            ],
-          ),
-          const SizedBox(height: 6),
-          Text(item.className,
-              style: const TextStyle(
-                  fontSize: 12.5, fontWeight: FontWeight.w600, color: AppColors.primary)),
-          const SizedBox(height: 6),
-          Row(
-            children: [
-              const Icon(Icons.access_time_rounded, size: 14, color: AppColors.textSecondary),
-              const SizedBox(width: 4),
-              Text(
-                'Masuk: ${item.clockInTime ?? '-'}',
-                style: const TextStyle(fontSize: 11.5, color: AppColors.textSecondary),
-              ),
-            ],
-          ),
-          if (item.jarakMeter != null) ...[
-            const SizedBox(height: 4),
-            Row(
-              children: [
-                const Icon(Icons.location_on_outlined, size: 14, color: AppColors.textSecondary),
-                const SizedBox(width: 4),
-                Text(
-                  'Jarak: ${item.jarakMeter!.toStringAsFixed(0)} m dari lokasi',
-                  style: const TextStyle(fontSize: 11.5, color: AppColors.textSecondary),
-                ),
-              ],
-            ),
-          ],
-          if (item.notes != null && item.notes!.isNotEmpty) ...[
-            const SizedBox(height: 6),
-            Text(item.notes!,
-                style: TextStyle(
-                    fontSize: 11.5,
-                    color: Colors.grey.shade700,
-                    fontStyle: FontStyle.italic)),
-          ],
-        ],
-      ),
-    );
-  }
-
-  Widget _buildStatCard(
-      String label, String value, Color textColor, Color bgColor, IconData icon) {
-    return Expanded(
-      child: Container(
-        margin: const EdgeInsets.symmetric(horizontal: 3),
-        padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 6),
-        decoration: BoxDecoration(
-            color: bgColor, borderRadius: BorderRadius.circular(14)),
-        child: Column(
-          children: [
-            Icon(icon, size: 18, color: textColor),
-            const SizedBox(height: 4),
-            Text(value,
-                style: TextStyle(
-                    fontSize: 16, fontWeight: FontWeight.w900, color: textColor)),
-            const SizedBox(height: 2),
-            Text(label,
-                style: TextStyle(
-                    fontSize: 10.5, fontWeight: FontWeight.w600, color: textColor)),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-// ═══════════════════════════════════════════════════════════════════════════════
-// Bottom Sheet: Cek Lokasi + Konfirmasi Presensi Hadir
-// ═══════════════════════════════════════════════════════════════════════════════
-
-class _LocationCheckSheet extends StatefulWidget {
-  final AttendanceProvider provider;
-  final String? token;
-  final String pesertaId;
-  final AttendanceService svc;
-  final DateTime currentTime;
-
-  const _LocationCheckSheet({
-    required this.provider,
-    required this.token,
-    required this.pesertaId,
-    required this.svc,
-    required this.currentTime,
-  });
-
-  @override
-  State<_LocationCheckSheet> createState() => _LocationCheckSheetState();
-}
-
-class _LocationCheckSheetState extends State<_LocationCheckSheet> {
-  // State: 'checking' | 'valid' | 'invalid' | 'error' | 'submitting' | 'success'
-  String _step = 'checking';
-  LocationCheckResult? _result;
-  String? _errorMsg;
-  final _notesController = TextEditingController();
-
-  // ID jadwal yang peserta ikuti (idealnya diambil dari API kelas peserta)
-  // Sementara pakai '1' sebagai default — nanti bisa diubah ke selector
-  final String _selectedJadwalId = '1';
-
-  @override
-  void initState() {
-    super.initState();
-    _doCheckLocation();
-  }
-
-  @override
-  void dispose() {
-    _notesController.dispose();
-    super.dispose();
-  }
-
-  Future<void> _doCheckLocation() async {
-    setState(() => _step = 'checking');
-    try {
-      final pos = await LocationService.getCurrentPosition();
-      final check = LocationService.cekLokasiValid(position: pos);
-      if (!mounted) return;
-      setState(() {
-        _result = check;
-        _step = check.isValid ? 'valid' : 'invalid';
-      });
-    } on LocationException catch (e) {
-      if (!mounted) return;
-      setState(() {
-        _step = 'error';
-        _errorMsg = e.message;
-      });
-    } catch (e) {
-      if (!mounted) return;
-      setState(() {
-        _step = 'error';
-        _errorMsg = 'Gagal mendapatkan lokasi GPS.';
-      });
-    }
-  }
-
-  Future<void> _doSubmit() async {
-    setState(() => _step = 'submitting');
-    try {
-      final now = widget.currentTime;
-      final jamHadir =
-          '${now.hour.toString().padLeft(2, '0')}:${now.minute.toString().padLeft(2, '0')}';
-      final tanggal =
-          '${now.year}-${now.month.toString().padLeft(2, '0')}-${now.day.toString().padLeft(2, '0')}';
-
-      final request = AttendanceSubmitRequest(
-        jadwalId: _selectedJadwalId,
-        pesertaId: widget.pesertaId,
-        tanggal: tanggal,
-        jamHadir: jamHadir,
-        status: 'hadir',
-        notes: _notesController.text.trim().isEmpty ? null : _notesController.text.trim(),
-        latitude: _result?.latitude,
-        longitude: _result?.longitude,
-      );
-
-      await widget.provider.submitAttendance(request, widget.token);
-      if (!mounted) return;
-      setState(() => _step = 'success');
-    } catch (e) {
-      if (!mounted) return;
-      setState(() {
-        _step = 'valid'; // kembali ke valid agar bisa coba lagi
-        _errorMsg = e.toString().replaceFirst('Exception: ', '');
-      });
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(_errorMsg ?? 'Gagal presensi'),
-          backgroundColor: Colors.red.shade700,
-        ),
-      );
-    }
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      decoration: const BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
-      ),
-      padding: EdgeInsets.only(
-        left: 20, right: 20, top: 20,
-        bottom: MediaQuery.of(context).viewInsets.bottom + 24,
-      ),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          // Handle
-          Container(width: 40, height: 4,
-              decoration: BoxDecoration(
-                  color: Colors.grey.shade300,
-                  borderRadius: BorderRadius.circular(2))),
-          const SizedBox(height: 16),
-          _buildContent(),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildContent() {
-    switch (_step) {
-      case 'checking':
-        return _buildChecking();
-      case 'valid':
-        return _buildValid();
-      case 'invalid':
-        return _buildInvalid();
-      case 'error':
-        return _buildError();
-      case 'submitting':
-        return _buildSubmitting();
-      case 'success':
-        return _buildSuccess();
-      default:
-        return const SizedBox.shrink();
-    }
-  }
-
-  Widget _buildChecking() {
-    return Column(
-      children: [
-        const CircularProgressIndicator(color: AppColors.primary),
-        const SizedBox(height: 16),
-        const Text('Memeriksa lokasi GPS...',
-            style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600,
-                color: AppColors.textPrimary)),
-        const SizedBox(height: 8),
-        const Text('Pastikan GPS aktif dan Anda mengizinkan akses lokasi.',
-            textAlign: TextAlign.center,
-            style: TextStyle(fontSize: 12, color: AppColors.textSecondary)),
-        const SizedBox(height: 20),
-      ],
-    );
-  }
-
-  Widget _buildValid() {
-    final r = _result!;
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        // Header
-        Row(children: [
-          Container(
-            padding: const EdgeInsets.all(8),
-            decoration: BoxDecoration(
-                color: AppColors.mintBg, borderRadius: BorderRadius.circular(10)),
-            child: const Icon(Icons.fingerprint_rounded,
-                color: AppColors.mintDark, size: 22),
-          ),
-          const SizedBox(width: 12),
-          const Text('Konfirmasi Presensi Masuk',
-              style: TextStyle(
-                  fontSize: 17, fontWeight: FontWeight.w800,
-                  color: AppColors.textPrimary)),
-        ]),
-        const SizedBox(height: 14),
-
-        // Lokasi valid
-        Container(
-          padding: const EdgeInsets.all(12),
-          decoration: BoxDecoration(
-              color: AppColors.mintBg,
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: AppColors.mint)),
-          child: Row(children: [
-            const Icon(Icons.check_circle_rounded,
-                color: AppColors.mintDark, size: 20),
-            const SizedBox(width: 8),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Text('Lokasi Valid ✓',
+    return RefreshIndicator(
+      color: AppColors.primary,
+      onRefresh: _refresh,
+      child: NotificationListener<ScrollNotification>(
+        onNotification: (n) {
+          if (n.metrics.pixels >= n.metrics.maxScrollExtent - 200) {
+            provider.loadMore(_token);
+          }
+          return false;
+        },
+        child: ListView.builder(
+          physics: const AlwaysScrollableScrollPhysics(),
+          padding: const EdgeInsets.all(16),
+          itemCount: (entries.isEmpty ? 1 : entries.length) + (showFooter ? 1 : 0),
+          itemBuilder: (_, i) {
+            if (entries.isEmpty && i == 0) {
+              return const Padding(
+                padding: EdgeInsets.only(top: 64),
+                child: Center(
+                  child: Text('Belum ada riwayat presensi.',
                       style: TextStyle(
-                          fontSize: 13, fontWeight: FontWeight.w700,
-                          color: AppColors.mintDark)),
-                  Text('Jarak Anda: ${r.jarakLabel} dari lokasi pelatihan',
-                      style: const TextStyle(
-                          fontSize: 11, color: AppColors.mintDark)),
-                ],
-              ),
-            ),
-          ]),
-        ),
-        const SizedBox(height: 14),
+                          color: AppColors.textSecondary, fontSize: 13)),
+                ),
+              );
+            }
+            if (i >= entries.length) return _buildLoadMoreFooter(provider);
 
-        // Keterangan
-        const Text('Keterangan (opsional)',
-            style: TextStyle(
-                fontSize: 12, fontWeight: FontWeight.bold,
-                color: AppColors.textSecondary)),
-        const SizedBox(height: 6),
-        TextField(
-          controller: _notesController,
-          decoration: InputDecoration(
-            hintText: 'Tambah catatan...',
-            hintStyle: TextStyle(color: Colors.grey.shade400, fontSize: 13),
-            filled: true,
-            fillColor: const Color(0xFFF7FAF8),
-            border: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(12),
-              borderSide: BorderSide(color: Colors.grey.shade200),
-            ),
-            contentPadding: const EdgeInsets.symmetric(
-                horizontal: 14, vertical: 12),
-          ),
-          maxLines: 2,
+            final e = entries[i];
+            if (e is String) {
+              return Padding(
+                padding: const EdgeInsets.only(top: 4, bottom: 10),
+                child: Text(e,
+                    style: const TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w800,
+                        color: AppColors.textSecondary)),
+              );
+            }
+            return AttendanceHistoryCard(item: e as AttendanceItem);
+          },
         ),
-        const SizedBox(height: 16),
-
-        ElevatedButton.icon(
-          onPressed: _doSubmit,
-          icon: const Icon(Icons.check_rounded),
-          label: const Text('Konfirmasi Presensi',
-              style: TextStyle(fontSize: 15, fontWeight: FontWeight.w800)),
-          style: ElevatedButton.styleFrom(
-            backgroundColor: AppColors.primary,
-            foregroundColor: Colors.white,
-            minimumSize: const Size.fromHeight(50),
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-          ),
-        ),
-        const SizedBox(height: 8),
-        TextButton(
-          onPressed: () => Navigator.pop(context),
-          child: const Text('Batal', style: TextStyle(color: AppColors.textSecondary)),
-        ),
-      ],
+      ),
     );
   }
 
-  Widget _buildInvalid() {
-    final r = _result!;
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        // Header
-        Row(children: [
-          Container(
-            padding: const EdgeInsets.all(8),
-            decoration: BoxDecoration(
-                color: Colors.red.shade50, borderRadius: BorderRadius.circular(10)),
-            child: Icon(Icons.location_off_rounded,
-                color: Colors.red.shade700, size: 22),
-          ),
-          const SizedBox(width: 12),
-          const Text('Lokasi Tidak Valid',
-              style: TextStyle(
-                  fontSize: 17, fontWeight: FontWeight.w800,
-                  color: AppColors.textPrimary)),
-        ]),
-        const SizedBox(height: 16),
-
-        Container(
-          padding: const EdgeInsets.all(14),
-          decoration: BoxDecoration(
-              color: Colors.red.shade50,
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: Colors.red.shade200)),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(children: [
-                Icon(Icons.warning_rounded, color: Colors.red.shade700, size: 20),
-                const SizedBox(width: 8),
-                Text('Anda berada di luar radius presensi',
-                    style: TextStyle(
-                        fontSize: 13, fontWeight: FontWeight.w700,
-                        color: Colors.red.shade700)),
-              ]),
-              const SizedBox(height: 8),
-              Text('Jarak Anda: ${r.jarakLabel}',
-                  style: TextStyle(fontSize: 12, color: Colors.red.shade700)),
-              Text('Radius yang diizinkan: ${r.radiusMeter} meter',
-                  style: TextStyle(fontSize: 12, color: Colors.red.shade700)),
-            ],
+  Widget _buildLoadMoreFooter(AttendanceProvider provider) {
+    if (provider.isLoadingMore) {
+      return const Padding(
+        padding: EdgeInsets.symmetric(vertical: 12),
+        child: Center(
+          child: SizedBox(
+            width: 22,
+            height: 22,
+            child: CircularProgressIndicator(
+                strokeWidth: 2.5, color: AppColors.primary),
           ),
         ),
-        const SizedBox(height: 12),
-
-        Container(
-          padding: const EdgeInsets.all(12),
-          decoration: BoxDecoration(
-              color: const Color(0xFFFFF8E1),
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: const Color(0xFFFFE082))),
-          child: const Text(
-            'Presensi hanya dapat dilakukan dari lokasi pelatihan. '
-            'Pastikan Anda berada di area BLK Jember.',
-            style: TextStyle(fontSize: 12, color: Color(0xFF795548)),
-          ),
-        ),
-        const SizedBox(height: 16),
-
-        ElevatedButton.icon(
-          onPressed: _doCheckLocation,
-          icon: const Icon(Icons.refresh_rounded),
-          label: const Text('Cek Ulang Lokasi',
-              style: TextStyle(fontWeight: FontWeight.w700)),
-          style: ElevatedButton.styleFrom(
-            backgroundColor: AppColors.primary,
-            foregroundColor: Colors.white,
-            minimumSize: const Size.fromHeight(48),
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-          ),
-        ),
-        const SizedBox(height: 8),
-        OutlinedButton(
-          onPressed: () => Navigator.pop(context),
-          style: OutlinedButton.styleFrom(
-            minimumSize: const Size.fromHeight(46),
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-          ),
-          child: const Text('Kembali'),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildError() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        const Icon(Icons.gps_off_rounded, color: Colors.orange, size: 48),
-        const SizedBox(height: 12),
-        const Text('GPS Tidak Tersedia',
-            textAlign: TextAlign.center,
-            style: TextStyle(
-                fontSize: 16, fontWeight: FontWeight.w800,
-                color: AppColors.textPrimary)),
-        const SizedBox(height: 8),
-        Text(_errorMsg ?? 'Terjadi kesalahan.',
-            textAlign: TextAlign.center,
-            style: const TextStyle(fontSize: 13, color: AppColors.textSecondary)),
-        const SizedBox(height: 20),
-        ElevatedButton.icon(
-          onPressed: _doCheckLocation,
-          icon: const Icon(Icons.refresh_rounded),
-          label: const Text('Coba Lagi',
-              style: TextStyle(fontWeight: FontWeight.w700)),
-          style: ElevatedButton.styleFrom(
-            backgroundColor: AppColors.primary,
-            foregroundColor: Colors.white,
-            minimumSize: const Size.fromHeight(48),
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-          ),
-        ),
-        const SizedBox(height: 8),
-        TextButton(
-          onPressed: () => Navigator.pop(context),
-          child: const Text('Batal', style: TextStyle(color: AppColors.textSecondary)),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildSubmitting() {
-    return const Column(
-      children: [
-        CircularProgressIndicator(color: AppColors.primary),
-        SizedBox(height: 16),
-        Text('Menyimpan presensi...',
-            style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600,
-                color: AppColors.textPrimary)),
-        SizedBox(height: 20),
-      ],
-    );
-  }
-
-  Widget _buildSuccess() {
-    return Column(
-      children: [
-        Container(
-          padding: const EdgeInsets.all(16),
-          decoration: const BoxDecoration(
-              color: AppColors.mintBg, shape: BoxShape.circle),
-          child: const Icon(Icons.check_circle_rounded,
-              color: AppColors.mintDark, size: 48),
-        ),
-        const SizedBox(height: 14),
-        const Text('Presensi Berhasil!',
-            style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800,
-                color: AppColors.textPrimary)),
-        const SizedBox(height: 6),
-        Text('Kehadiran Anda telah tercatat pada ${widget.svc.formatDate(DateTime.now())}',
-            textAlign: TextAlign.center,
-            style: const TextStyle(fontSize: 13, color: AppColors.textSecondary)),
-        const SizedBox(height: 20),
-        ElevatedButton(
-          onPressed: () => Navigator.pop(context),
-          style: ElevatedButton.styleFrom(
-            backgroundColor: AppColors.primary,
-            foregroundColor: Colors.white,
-            minimumSize: const Size(200, 46),
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-          ),
-          child: const Text('Tutup', style: TextStyle(fontWeight: FontWeight.w700)),
-        ),
-      ],
-    );
-  }
-}
-
-// ═══════════════════════════════════════════════════════════════════════════════
-// Bottom Sheet: Pengajuan Izin / Sakit
-// ═══════════════════════════════════════════════════════════════════════════════
-
-class _IzinSakitSheet extends StatefulWidget {
-  final String type; // 'izin' | 'sakit'
-  final AttendanceProvider provider;
-  final String? token;
-  final String pesertaId;
-  final AttendanceService svc;
-  final DateTime currentTime;
-
-  const _IzinSakitSheet({
-    required this.type,
-    required this.provider,
-    required this.token,
-    required this.pesertaId,
-    required this.svc,
-    required this.currentTime,
-  });
-
-  @override
-  State<_IzinSakitSheet> createState() => _IzinSakitSheetState();
-}
-
-class _IzinSakitSheetState extends State<_IzinSakitSheet> {
-  final _notesController = TextEditingController();
-  String _step = 'form'; // 'form' | 'submitting' | 'success'
-  String? _error;
-  final String _selectedJadwalId = '1';
-
-  @override
-  void dispose() {
-    _notesController.dispose();
-    super.dispose();
-  }
-
-  Future<void> _doSubmit() async {
-    if (_notesController.text.trim().isEmpty) {
-      setState(() => _error = 'Keterangan wajib diisi untuk ${widget.type == 'izin' ? 'pengajuan izin' : 'laporan sakit'}.');
-      return;
-    }
-    setState(() { _step = 'submitting'; _error = null; });
-
-    try {
-      final now = widget.currentTime;
-      final tanggal = '${now.year}-${now.month.toString().padLeft(2, '0')}-${now.day.toString().padLeft(2, '0')}';
-      final jamHadir = '${now.hour.toString().padLeft(2, '0')}:${now.minute.toString().padLeft(2, '0')}';
-
-      final request = AttendanceSubmitRequest(
-        jadwalId: _selectedJadwalId,
-        pesertaId: widget.pesertaId,
-        tanggal: tanggal,
-        jamHadir: jamHadir,
-        status: widget.type,
-        notes: _notesController.text.trim(),
-        // Tidak perlu koordinat untuk izin/sakit
       );
-
-      await widget.provider.submitAttendance(request, widget.token);
-      if (!mounted) return;
-      setState(() => _step = 'success');
-    } catch (e) {
-      if (!mounted) return;
-      setState(() {
-        _step = 'form';
-        _error = e.toString().replaceFirst('Exception: ', '');
-      });
     }
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final isIzin = widget.type == 'izin';
-    final title = isIzin ? 'Formulir Pengajuan Izin' : 'Formulir Keterangan Sakit';
-    final iconColor = isIzin ? AppColors.orangeText : Colors.blue.shade700;
-    final iconBg = isIzin ? AppColors.orangeLight : Colors.blue.shade50;
-    final icon = isIzin ? Icons.mail_outline_rounded : Icons.healing_rounded;
-
-    return Container(
-      decoration: const BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
-      ),
-      padding: EdgeInsets.only(
-        left: 20, right: 20, top: 20,
-        bottom: MediaQuery.of(context).viewInsets.bottom + 24,
-      ),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          Center(child: Container(width: 40, height: 4,
-              decoration: BoxDecoration(
-                  color: Colors.grey.shade300,
-                  borderRadius: BorderRadius.circular(2)))),
-          const SizedBox(height: 16),
-
-          if (_step == 'success') ...[
-            _buildSuccess(),
-          ] else ...[
-            Row(children: [
-              Container(
-                padding: const EdgeInsets.all(8),
-                decoration: BoxDecoration(
-                    color: iconBg, borderRadius: BorderRadius.circular(10)),
-                child: Icon(icon, color: iconColor, size: 22),
-              ),
-              const SizedBox(width: 12),
-              Text(title, style: const TextStyle(fontSize: 17,
-                  fontWeight: FontWeight.w800, color: AppColors.textPrimary)),
-            ]),
-            const SizedBox(height: 16),
-
-            if (_step == 'submitting')
-              const Padding(
-                padding: EdgeInsets.symmetric(vertical: 20),
-                child: Center(child: CircularProgressIndicator(color: AppColors.primary)),
-              )
-            else ...[
-              if (_error != null)
-                Container(
-                  margin: const EdgeInsets.only(bottom: 12),
-                  padding: const EdgeInsets.all(10),
-                  decoration: BoxDecoration(
-                      color: Colors.red.shade50,
-                      borderRadius: BorderRadius.circular(10)),
-                  child: Text(_error!,
-                      style: TextStyle(fontSize: 12, color: Colors.red.shade700)),
-                ),
-
-              Text(isIzin ? 'Alasan Izin' : 'Keterangan Sakit',
-                  style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold,
-                      color: AppColors.textSecondary)),
-              const SizedBox(height: 6),
-              TextField(
-                controller: _notesController,
-                decoration: InputDecoration(
-                  hintText: isIzin
-                      ? 'Contoh: Keperluan keluarga, urusan administrasi, dll.'
-                      : 'Contoh: Demam sejak pagi, sedang berobat ke puskesmas.',
-                  hintStyle: TextStyle(color: Colors.grey.shade400, fontSize: 12),
-                  filled: true,
-                  fillColor: const Color(0xFFF7FAF8),
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                    borderSide: BorderSide(color: Colors.grey.shade200),
-                  ),
-                  contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-                ),
-                maxLines: 3,
-              ),
-              const SizedBox(height: 16),
-
-              ElevatedButton.icon(
-                onPressed: _doSubmit,
-                icon: const Icon(Icons.send_rounded, size: 18),
-                label: Text(isIzin ? 'Ajukan Izin' : 'Laporkan Sakit',
-                    style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w800)),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: isIzin ? AppColors.orangeText : Colors.blue.shade700,
-                  foregroundColor: Colors.white,
-                  minimumSize: const Size.fromHeight(50),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-                ),
-              ),
-              const SizedBox(height: 8),
-              TextButton(
-                onPressed: () => Navigator.pop(context),
-                child: const Text('Batal', style: TextStyle(color: AppColors.textSecondary)),
-              ),
-            ],
-          ],
-        ],
-      ),
-    );
-  }
-
-  Widget _buildSuccess() {
-    final isIzin = widget.type == 'izin';
-    return Column(
-      children: [
-        Container(
-          padding: const EdgeInsets.all(16),
-          decoration: BoxDecoration(
-              color: isIzin ? AppColors.orangeLight : Colors.blue.shade50,
-              shape: BoxShape.circle),
-          child: Icon(Icons.check_circle_rounded,
-              color: isIzin ? AppColors.orangeText : Colors.blue.shade700, size: 48),
+    return Center(
+      child: TextButton(
+        onPressed: () => provider.loadMore(_token),
+        child: Text(
+          provider.loadMoreFailed
+              ? 'Gagal memuat. Ketuk untuk coba lagi'
+              : 'Muat riwayat lebih lama',
+          style: const TextStyle(fontWeight: FontWeight.w700),
         ),
-        const SizedBox(height: 14),
-        Text(isIzin ? 'Izin Berhasil Diajukan!' : 'Laporan Sakit Terkirim!',
-            style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w800,
-                color: AppColors.textPrimary)),
-        const SizedBox(height: 6),
-        const Text('Keterangan kehadiran Anda telah tercatat.',
-            textAlign: TextAlign.center,
-            style: TextStyle(fontSize: 13, color: AppColors.textSecondary)),
-        const SizedBox(height: 20),
-        ElevatedButton(
-          onPressed: () => Navigator.pop(context),
-          style: ElevatedButton.styleFrom(
-            backgroundColor: AppColors.primary,
-            foregroundColor: Colors.white,
-            minimumSize: const Size(200, 46),
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-          ),
-          child: const Text('Tutup', style: TextStyle(fontWeight: FontWeight.w700)),
-        ),
-      ],
+      ),
     );
   }
 }

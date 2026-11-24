@@ -7,22 +7,22 @@ class AttendanceRepository {
   AttendanceRepository({AttendanceService? service})
       : service = service ?? AttendanceService();
 
-  Future<List<AttendanceItem>> getAttendanceList([String? token]) async {
-    return await service.getAttendanceList(token);
+  Future<AttendancePage> getAttendancePage({int page = 1, String? token}) {
+    return service.getAttendancePage(page: page, token: token);
   }
 
-  Future<AttendanceItem?> getTodayAttendance([String? token]) async {
-    return await service.getTodayAttendance(token);
+  Future<AttendanceItem?> getTodayAttendance([String? token]) {
+    return service.getTodayAttendance(token);
   }
 
-  Future<Map<String, dynamic>?> getAttendanceSummaryReport([String? token]) async {
-    return await service.getAttendanceSummaryReport(token);
+  Future<AttendanceRekap?> getAttendanceSummaryReport([String? token]) {
+    return service.getAttendanceSummaryReport(token);
   }
 
   Future<AttendanceItem> submitAttendance(
     AttendanceSubmitRequest request, [
     String? token,
-  ]) async {
-    return await service.submitAttendance(request, token);
+  ]) {
+    return service.submitAttendance(request, token);
   }
 }

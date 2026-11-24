@@ -1,64 +1,91 @@
 import 'package:flutter/foundation.dart';
-import 'package:geolocator/geolocator.dart';
 import 'package:sikarir/features/attendance/data/models/attendance_model.dart';
 import 'package:sikarir/features/attendance/data/repositories/attendance_repository.dart';
-import 'package:sikarir/features/attendance/data/services/location_service.dart';
+import 'package:sikarir/features/attendance/utils/attendance_formatters.dart';
 
 class AttendanceProvider extends ChangeNotifier {
   final AttendanceRepository repository;
+  final DateTime Function() _now;
 
-  AttendanceProvider({AttendanceRepository? repository})
-      : repository = repository ?? AttendanceRepository();
+  AttendanceProvider({
+    AttendanceRepository? repository,
+    DateTime Function()? now,
+  })  : repository = repository ?? AttendanceRepository(),
+        _now = now ?? DateTime.now;
 
   // ─── State ──────────────────────────────────────────────────────────────
   bool _isLoading = false;
-  bool _isCheckingLocation = false;
+  bool _isLoadingMore = false;
+  bool _isSubmitting = false;
+  // true hanya jika data terkait berhasil diperiksa ke server.
+  bool _todayLoaded = false;
+  bool _historyLoaded = false;
+  bool _loadMoreFailed = false;
+  bool _hasMore = false;
+  int _page = 1;
+
   List<AttendanceItem> _attendanceList = [];
   AttendanceItem? _todayAttendance;
-  AttendanceSummary? _summary;
+  AttendanceRekap? _rekap;
   String? _errorMessage;
   String _selectedFilter = 'Semua';
 
-  // Lokasi GPS
-  Position? _currentPosition;
-  LocationCheckResult? _locationCheck;
-  String? _locationError;
-  LocationExceptionType? _locationErrorType;
-
-  // Laporan Rekapitulasi Kehadiran
-  Map<String, dynamic>? _rekapData;
-
   // ─── Getters ─────────────────────────────────────────────────────────────
   bool get isLoading => _isLoading;
-  bool get isCheckingLocation => _isCheckingLocation;
+  bool get isLoadingMore => _isLoadingMore;
+  bool get isSubmitting => _isSubmitting;
+  bool get todayLoaded => _todayLoaded;
+  bool get historyLoaded => _historyLoaded;
+  bool get hasMore => _hasMore;
+  bool get loadMoreFailed => _loadMoreFailed;
 
-  Map<String, dynamic>? get rekapData => _rekapData;
-  Map<String, dynamic>? get rekapSummary => _rekapData?['summary'] as Map<String, dynamic>?;
-  String get statusKelayakan =>
-      rekapSummary?['status_kelayakan']?.toString() ?? 'Memenuhi Syarat Sertifikasi';
-  bool get memenuhiSyarat => rekapSummary?['memenuhi_syarat'] == true;
+  AttendanceRekap? get rekap => _rekap;
 
   List<AttendanceItem> get attendanceList {
     if (_selectedFilter == 'Semua') return _attendanceList;
     return _attendanceList
-        .where((item) => item.status.toLowerCase() == _selectedFilter.toLowerCase())
+        .where((item) => item.status == _selectedFilter)
         .toList();
   }
 
   List<AttendanceItem> get allAttendanceList => _attendanceList;
   AttendanceItem? get todayAttendance => _todayAttendance;
-  AttendanceSummary get summary =>
-      _summary ?? AttendanceSummary.fromList(_attendanceList);
   String? get errorMessage => _errorMessage;
   String get selectedFilter => _selectedFilter;
 
-  Position? get currentPosition => _currentPosition;
-  LocationCheckResult? get locationCheck => _locationCheck;
-  String? get locationError => _locationError;
-  LocationExceptionType? get locationErrorType => _locationErrorType;
+  /// Ringkasan: utamakan angka server (mencakup seluruh riwayat); fallback
+  /// ke hitungan dari data yang sudah dimuat.
+  AttendanceSummary get summary =>
+      _rekap?.toSummary() ?? AttendanceSummary.fromList(_attendanceList);
 
-  bool get isInsideRadius => _locationCheck?.isValid ?? false;
-  bool get hasLocation => _currentPosition != null;
+  double get attendancePercentage => summary.attendancePercentage;
+
+  /// Apakah ada catatan kehadiran sama sekali.
+  bool get hasAttendanceData => summary.hasData;
+
+  double get minimumPercentage =>
+      _rekap?.minimalPersentase ?? AttendanceSummary.minimumPercentage;
+
+  /// Status kelayakan: utamakan server, fallback ambang minimal.
+  /// `null` bila belum ada data sama sekali.
+  bool? get memenuhiSyarat {
+    if (!hasAttendanceData) return null;
+    return _rekap?.memenuhiSyarat ?? attendancePercentage >= minimumPercentage;
+  }
+
+  String? get statusKelayakan => _rekap?.statusKelayakan;
+
+  /// Catatan presensi hari ini untuk jadwal tertentu (backend mengizinkan satu
+  /// presensi per jadwal per hari). `null` bila belum ada.
+  AttendanceItem? todayRecordFor(String jadwalId) {
+    final today = formatApiDate(_now());
+    for (final item in _attendanceList) {
+      if (item.classId == jadwalId && item.date.startsWith(today)) return item;
+    }
+    final t = _todayAttendance;
+    if (t != null && t.classId == jadwalId) return t;
+    return null;
+  }
 
   // ─── Actions ─────────────────────────────────────────────────────────────
 
@@ -72,91 +99,85 @@ class AttendanceProvider extends ChangeNotifier {
     _errorMessage = null;
     notifyListeners();
 
-    try {
-      // Ambil riwayat, presensi hari ini, dan rekapitulasi secara paralel
-      final results = await Future.wait([
-        repository.getAttendanceList(token),
-        repository.getTodayAttendance(token),
-        repository.getAttendanceSummaryReport(token),
-      ]);
+    // Ambil riwayat, presensi hari ini, dan rekapitulasi secara paralel.
+    // Tiap request ditangani sendiri agar satu kegagalan tidak menimpa data
+    // lain, dan data lama tetap tampil saat refresh gagal.
+    String? error;
 
-      _attendanceList = results[0] as List<AttendanceItem>;
-      _todayAttendance = results[1] as AttendanceItem?;
-      _rekapData = results[2] as Map<String, dynamic>?;
-      _summary = AttendanceSummary.fromList(_attendanceList);
-    } catch (e) {
-      _errorMessage = e.toString();
-    } finally {
-      _isLoading = false;
-      notifyListeners();
+    Future<void> run(Future<void> Function() job) async {
+      try {
+        await job();
+      } catch (e) {
+        error ??= e.toString().replaceFirst('Exception: ', '');
+      }
     }
+
+    await Future.wait([
+      run(() async {
+        final page = await repository.getAttendancePage(page: 1, token: token);
+        _attendanceList = page.items;
+        _page = 1;
+        _hasMore = page.hasMore;
+        _loadMoreFailed = false;
+        _historyLoaded = true;
+      }),
+      run(() async {
+        _todayAttendance = await repository.getTodayAttendance(token);
+        _todayLoaded = true;
+      }),
+      // Rekap bersifat pelengkap: gagal → fallback ke hitungan lokal.
+      () async {
+        try {
+          _rekap = await repository.getAttendanceSummaryReport(token);
+        } catch (e) {
+          if (kDebugMode) debugPrint('Rekap error: $e');
+        }
+      }(),
+    ]);
+
+    _errorMessage = error;
+    _isLoading = false;
+    notifyListeners();
   }
 
-  /// Ambil koordinat GPS saat ini dan validasi terhadap lokasi pelatihan.
-  Future<bool> checkCurrentLocation({
-    double targetLat = LocationService.defaultLat,
-    double targetLng = LocationService.defaultLng,
-    int radiusMeter = LocationService.defaultRadius,
-  }) async {
-    _isCheckingLocation = true;
-    _locationError = null;
-    _locationErrorType = null;
-    _currentPosition = null;
-    _locationCheck = null;
+  /// Muat halaman riwayat berikutnya.
+  Future<void> loadMore([String? token]) async {
+    if (_isLoadingMore || _isLoading || !_hasMore) return;
+    _isLoadingMore = true;
+    _loadMoreFailed = false;
     notifyListeners();
 
     try {
-      final position = await LocationService.getCurrentPosition();
-      _currentPosition = position;
-      _locationCheck = LocationService.cekLokasiValid(
-        position: position,
-        targetLat: targetLat,
-        targetLng: targetLng,
-        radiusMeter: radiusMeter,
-      );
-      return _locationCheck!.isValid;
-    } on LocationException catch (e) {
-      _locationError = e.message;
-      _locationErrorType = e.type;
-      return false;
+      final next = _page + 1;
+      final page = await repository.getAttendancePage(page: next, token: token);
+      _attendanceList = [..._attendanceList, ...page.items];
+      _page = next;
+      _hasMore = page.hasMore;
     } catch (e) {
-      _locationError = 'Gagal mendapatkan lokasi: ${e.toString()}';
-      _locationErrorType = LocationExceptionType.unknown;
-      return false;
+      _loadMoreFailed = true;
     } finally {
-      _isCheckingLocation = false;
+      _isLoadingMore = false;
       notifyListeners();
     }
   }
 
-  /// Submit presensi hadir dengan validasi GPS
+  /// Submit presensi (hadir / izin / sakit). Melempar error ke pemanggil.
   Future<void> submitAttendance(
     AttendanceSubmitRequest request, [
     String? token,
   ]) async {
-    _isLoading = true;
-    _errorMessage = null;
+    if (_isSubmitting) return; // cegah submit ganda
+    _isSubmitting = true;
     notifyListeners();
 
     try {
       final result = await repository.submitAttendance(request, token);
       _todayAttendance = result;
-      _attendanceList.insert(0, result);
-      _summary = AttendanceSummary.fromList(_attendanceList);
-    } catch (e) {
-      _errorMessage = e.toString().replaceFirst('Exception: ', '');
-      rethrow;
+      _todayLoaded = true;
+      _attendanceList = [result, ..._attendanceList];
     } finally {
-      _isLoading = false;
+      _isSubmitting = false;
       notifyListeners();
     }
-  }
-
-  void clearLocationState() {
-    _currentPosition = null;
-    _locationCheck = null;
-    _locationError = null;
-    _locationErrorType = null;
-    notifyListeners();
   }
 }

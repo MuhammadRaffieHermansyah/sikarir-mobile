@@ -16,6 +16,11 @@ class TrainingClassModel {
   final String description;
   final List<ClassMaterial> materials;
 
+  /// Titik presensi lokasi pelatihan (opsional; null → pakai default BLK).
+  final double? latitude;
+  final double? longitude;
+  final int? radiusMeter;
+
   TrainingClassModel({
     required this.id,
     required this.pelatihanId,
@@ -33,7 +38,13 @@ class TrainingClassModel {
     required this.status,
     required this.description,
     this.materials = const [],
+    this.latitude,
+    this.longitude,
+    this.radiusMeter,
   });
+
+  static double? _num(dynamic v) =>
+      v == null ? null : (v is num ? v.toDouble() : double.tryParse(v.toString()));
 
   factory TrainingClassModel.fromMap(Map<String, dynamic> map) {
     final rawMaterials = map['materi'] ?? map['materials'] ?? [];
@@ -68,6 +79,10 @@ class TrainingClassModel {
       status: (map['status'] ?? 'berlangsung').toString().toLowerCase(),
       description: (pelatihan?['deskripsi_pelatihan'] ?? map['deskripsi'] ?? map['description'] ?? 'Pelatihan berbasis kompetensi industri berstandar SKKNI & BNSP.').toString(),
       materials: materialList,
+      // Kolom backend pada jadwal_pelatihan: lokasi_latitude, lokasi_longitude, radius_meter
+      latitude: _num(jadwal?['lokasi_latitude'] ?? map['lokasi_latitude']),
+      longitude: _num(jadwal?['lokasi_longitude'] ?? map['lokasi_longitude']),
+      radiusMeter: _num(jadwal?['radius_meter'] ?? map['radius_meter'])?.round(),
     );
   }
 
