@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import 'package:sikarir/core/constants/app_theme.dart';
 import 'package:sikarir/features/auth/presentation/providers/auth_provider.dart';
 import 'package:sikarir/features/instructor/presentation/pages/instructor_class_detail_screen.dart';
+import 'package:sikarir/features/instructor/presentation/pages/instructor_profile_tab.dart';
 import 'package:sikarir/features/instructor/presentation/providers/instructor_provider.dart';
 import 'package:sikarir/features/training/data/models/training_class_model.dart';
 
@@ -24,7 +25,7 @@ class _InstructorNavigationScreenState
     return Scaffold(
       body: IndexedStack(
         index: _index,
-        children: const [_TeachingClassesTab(), _InstructorProfileTab()],
+        children: const [_TeachingClassesTab(), InstructorProfileTab()],
       ),
       bottomNavigationBar: NavigationBar(
         selectedIndex: _index,
@@ -259,127 +260,3 @@ class _ClassCard extends StatelessWidget {
   }
 }
 
-class _InstructorProfileTab extends StatelessWidget {
-  const _InstructorProfileTab();
-
-  Future<void> _logout(BuildContext context) async {
-    final auth = context.read<AuthProvider>();
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('Keluar Akun?'),
-        content: const Text(
-          'Anda perlu login kembali untuk mengakses aplikasi.',
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx, false),
-            child: const Text('Batal'),
-          ),
-          TextButton(
-            onPressed: () => Navigator.pop(ctx, true),
-            child: Text('Keluar', style: TextStyle(color: Colors.red.shade700)),
-          ),
-        ],
-      ),
-    );
-    if (confirmed == true) await auth.logout();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final user = context.watch<AuthProvider>().user;
-
-    return Scaffold(
-      backgroundColor: AppColors.background,
-      appBar: AppBar(
-        title: const Text(
-          'Profil Instruktur',
-          style: TextStyle(
-            fontSize: 18,
-            fontWeight: FontWeight.w800,
-            color: AppColors.textPrimary,
-          ),
-        ),
-      ),
-      body: ListView(
-        padding: const EdgeInsets.all(16),
-        children: [
-          Container(
-            padding: const EdgeInsets.all(20),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(18),
-              border: Border.all(color: AppColors.cardBorder),
-            ),
-            child: Row(
-              children: [
-                const CircleAvatar(
-                  radius: 28,
-                  backgroundColor: AppColors.mint,
-                  child: Icon(
-                    Icons.person_rounded,
-                    color: AppColors.mintDark,
-                    size: 30,
-                  ),
-                ),
-                const SizedBox(width: 16),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        user?.name ?? '-',
-                        style: const TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.w800,
-                        ),
-                      ),
-                      const SizedBox(height: 2),
-                      Text(
-                        user?.email ?? '-',
-                        style: const TextStyle(
-                          fontSize: 12.5,
-                          color: AppColors.textSecondary,
-                        ),
-                      ),
-                      const SizedBox(height: 6),
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 8,
-                          vertical: 3,
-                        ),
-                        decoration: BoxDecoration(
-                          color: AppColors.mintBg,
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                        child: const Text(
-                          'Instruktur',
-                          style: TextStyle(
-                            fontSize: 11,
-                            fontWeight: FontWeight.bold,
-                            color: AppColors.mintDark,
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(height: 16),
-          OutlinedButton.icon(
-            onPressed: () => _logout(context),
-            icon: Icon(Icons.logout_rounded, color: Colors.red.shade700),
-            label: Text('Keluar', style: TextStyle(color: Colors.red.shade700)),
-            style: OutlinedButton.styleFrom(
-              padding: const EdgeInsets.symmetric(vertical: 14),
-              side: BorderSide(color: Colors.red.shade200),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}

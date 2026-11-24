@@ -55,6 +55,8 @@ class ApiConstants {
 
   /// Instruktur: kelas yang diampu, modul & materi per pertemuan.
   static const String instrukturKelas = '$baseUrl/instruktur/kelas';
+  static const String instrukturMe = '$baseUrl/instruktur/me';
+  static const String profilePassword = '$baseUrl/profile/password';
   static String modulKelas(String kelasId) => '$baseUrl/kelas-pelatihan/$kelasId/modul';
   static String modul(String modulId) => '$baseUrl/modul/$modulId';
   static String materiModul(String modulId) => '$baseUrl/modul/$modulId/materi';
