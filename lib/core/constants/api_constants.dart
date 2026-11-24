@@ -52,4 +52,11 @@ class ApiConstants {
   static const String jadwalPelatihan = '$baseUrl/jadwal-pelatihan';
   static const String kelasPelatihan = '$baseUrl/kelas-pelatihan';
   static const String kelasPelatihanMe = '$baseUrl/kelas-pelatihan/me';
+
+  /// Instruktur: kelas yang diampu, modul & materi per pertemuan.
+  static const String instrukturKelas = '$baseUrl/instruktur/kelas';
+  static String modulKelas(String kelasId) => '$baseUrl/kelas-pelatihan/$kelasId/modul';
+  static String modul(String modulId) => '$baseUrl/modul/$modulId';
+  static String materiModul(String modulId) => '$baseUrl/modul/$modulId/materi';
+  static String materi(String materiId) => '$baseUrl/materi/$materiId';
 }

@@ -6,6 +6,7 @@ import 'package:sikarir/features/attendance/attendance.dart';
 import 'package:sikarir/features/auth/auth.dart';
 import 'package:sikarir/features/certificate/certificate.dart';
 import 'package:sikarir/features/home/home.dart';
+import 'package:sikarir/features/instructor/instructor.dart';
 import 'package:sikarir/features/job/job.dart';
 import 'package:sikarir/features/partner/partner.dart';
 import 'package:sikarir/features/profile/presentation/profile_screen.dart';
@@ -39,6 +40,11 @@ class SikarirApp extends StatelessWidget {
         ChangeNotifierProvider(create: (_) => CertificateProvider()),
         ChangeNotifierProvider(create: (_) => PartnerProvider()),
         ChangeNotifierProvider(create: (_) => PesertaProvider()),
+        ChangeNotifierProxyProvider<AuthProvider, InstructorProvider>(
+          create: (_) => InstructorProvider(),
+          update: (_, auth, provider) =>
+              (provider ?? InstructorProvider())..bindUser(auth.user?.userId),
+        ),
       ],
       builder: (context, child) {
         final auth = context.watch<AuthProvider>();
@@ -61,9 +67,11 @@ class SikarirApp extends StatelessWidget {
           debugShowCheckedModeBanner: false,
           theme: AppTheme.lightTheme,
           onGenerateRoute: AppRouter.onGenerateRoute,
-          home: auth.isAuthenticated
-              ? const MainNavigationScreen()
-              : const LoginScreen(),
+          home: !auth.isAuthenticated
+              ? const LoginScreen()
+              : (auth.isInstructor
+                    ? const InstructorNavigationScreen()
+                    : const MainNavigationScreen()),
         );
       },
     );

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:sikarir/core/constants/app_theme.dart';
+import 'package:sikarir/features/instructor/presentation/widgets/class_modules_view.dart';
 import 'package:sikarir/features/training/data/models/training_class_model.dart';
 
 class ClassDetailScreen extends StatefulWidget {
@@ -57,7 +58,10 @@ class _ClassDetailScreenState extends State<ClassDetailScreen>
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
                     Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 10,
+                        vertical: 4,
+                      ),
                       decoration: BoxDecoration(
                         color: AppColors.mintBg,
                         borderRadius: BorderRadius.circular(8),
@@ -93,27 +97,46 @@ class _ClassDetailScreenState extends State<ClassDetailScreen>
                 const SizedBox(height: 6),
                 Text(
                   item.description,
-                  style: const TextStyle(fontSize: 12.5, color: AppColors.textSecondary, height: 1.4),
+                  style: const TextStyle(
+                    fontSize: 12.5,
+                    color: AppColors.textSecondary,
+                    height: 1.4,
+                  ),
                 ),
                 const SizedBox(height: 14),
                 Row(
                   children: [
-                    const Icon(Icons.person_pin_rounded, size: 18, color: AppColors.primary),
+                    const Icon(
+                      Icons.person_pin_rounded,
+                      size: 18,
+                      color: AppColors.primary,
+                    ),
                     const SizedBox(width: 8),
                     Text(
                       'Instruktur: ${item.instructor}',
-                      style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: AppColors.textPrimary),
+                      style: const TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.bold,
+                        color: AppColors.textPrimary,
+                      ),
                     ),
                   ],
                 ),
                 const SizedBox(height: 6),
                 Row(
                   children: [
-                    const Icon(Icons.meeting_room_outlined, size: 18, color: AppColors.textSecondary),
+                    const Icon(
+                      Icons.meeting_room_outlined,
+                      size: 18,
+                      color: AppColors.textSecondary,
+                    ),
                     const SizedBox(width: 8),
                     Text(
                       item.room,
-                      style: const TextStyle(fontSize: 12, color: AppColors.textSecondary),
+                      style: const TextStyle(
+                        fontSize: 12,
+                        color: AppColors.textSecondary,
+                      ),
                     ),
                   ],
                 ),
@@ -130,7 +153,10 @@ class _ClassDetailScreenState extends State<ClassDetailScreen>
               unselectedLabelColor: AppColors.textSecondary,
               indicatorColor: AppColors.primary,
               indicatorWeight: 3,
-              labelStyle: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
+              labelStyle: const TextStyle(
+                fontWeight: FontWeight.bold,
+                fontSize: 13,
+              ),
               tabs: const [
                 Tab(text: 'Modul & Materi Kelas'),
                 Tab(text: 'Informasi Pelatihan & BNSP'),
@@ -143,89 +169,106 @@ class _ClassDetailScreenState extends State<ClassDetailScreen>
             child: TabBarView(
               controller: _tabController,
               children: [
-                // Tab 1: Materi
-                item.materials.isEmpty
-                    ? const Center(
-                        child: Text(
-                          'Materi kelas akan segera diunggah oleh instruktur.',
-                          style: TextStyle(color: AppColors.textSecondary, fontSize: 13),
-                        ),
-                      )
-                    : ListView.builder(
-                        padding: const EdgeInsets.all(16),
-                        itemCount: item.materials.length,
-                        itemBuilder: (context, index) {
-                          final mat = item.materials[index];
-                          return Container(
-                            margin: const EdgeInsets.only(bottom: 12),
-                            padding: const EdgeInsets.all(16),
-                            decoration: BoxDecoration(
-                              color: Colors.white,
-                              borderRadius: BorderRadius.circular(16),
-                              border: Border.all(color: AppColors.cardBorder),
+                // Tab 1: Modul & materi per pertemuan (dari instruktur);
+                // jika belum ada, tampilkan materi bawaan kelas.
+                ClassModulesView(
+                  classId: item.id,
+                  fallback: item.materials.isEmpty
+                      ? const Center(
+                          child: Text(
+                            'Materi kelas akan segera diunggah oleh instruktur.',
+                            style: TextStyle(
+                              color: AppColors.textSecondary,
+                              fontSize: 13,
                             ),
-                            child: Row(
-                              children: [
-                                Container(
-                                  padding: const EdgeInsets.all(10),
-                                  decoration: BoxDecoration(
-                                    color: mat.type == 'assignment'
-                                        ? AppColors.peachBg
-                                        : AppColors.mintBg,
-                                    borderRadius: BorderRadius.circular(12),
+                          ),
+                        )
+                      : ListView.builder(
+                          padding: const EdgeInsets.all(16),
+                          itemCount: item.materials.length,
+                          itemBuilder: (context, index) {
+                            final mat = item.materials[index];
+                            return Container(
+                              margin: const EdgeInsets.only(bottom: 12),
+                              padding: const EdgeInsets.all(16),
+                              decoration: BoxDecoration(
+                                color: Colors.white,
+                                borderRadius: BorderRadius.circular(16),
+                                border: Border.all(color: AppColors.cardBorder),
+                              ),
+                              child: Row(
+                                children: [
+                                  Container(
+                                    padding: const EdgeInsets.all(10),
+                                    decoration: BoxDecoration(
+                                      color: mat.type == 'assignment'
+                                          ? AppColors.peachBg
+                                          : AppColors.mintBg,
+                                      borderRadius: BorderRadius.circular(12),
+                                    ),
+                                    child: Icon(
+                                      mat.type == 'assignment'
+                                          ? Icons.assignment_outlined
+                                          : Icons.menu_book_rounded,
+                                      color: mat.type == 'assignment'
+                                          ? AppColors.orangeText
+                                          : AppColors.mintDark,
+                                      size: 22,
+                                    ),
                                   ),
-                                  child: Icon(
-                                    mat.type == 'assignment'
-                                        ? Icons.assignment_outlined
-                                        : Icons.menu_book_rounded,
-                                    color: mat.type == 'assignment'
-                                        ? AppColors.orangeText
-                                        : AppColors.mintDark,
-                                    size: 22,
-                                  ),
-                                ),
-                                const SizedBox(width: 14),
-                                Expanded(
-                                  child: Column(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
-                                    children: [
-                                      Text(
-                                        mat.title,
-                                        style: const TextStyle(
-                                          fontSize: 13,
-                                          fontWeight: FontWeight.bold,
-                                          color: AppColors.textPrimary,
+                                  const SizedBox(width: 14),
+                                  Expanded(
+                                    child: Column(
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
+                                      children: [
+                                        Text(
+                                          mat.title,
+                                          style: const TextStyle(
+                                            fontSize: 13,
+                                            fontWeight: FontWeight.bold,
+                                            color: AppColors.textPrimary,
+                                          ),
                                         ),
-                                      ),
-                                      const SizedBox(height: 4),
-                                      Text(
-                                        'Durasi: ${mat.duration} • ${mat.type.toUpperCase()}',
-                                        style: const TextStyle(fontSize: 11, color: AppColors.textSecondary),
-                                      ),
-                                    ],
+                                        const SizedBox(height: 4),
+                                        Text(
+                                          'Durasi: ${mat.duration} • ${mat.type.toUpperCase()}',
+                                          style: const TextStyle(
+                                            fontSize: 11,
+                                            color: AppColors.textSecondary,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
                                   ),
-                                ),
-                                IconButton(
-                                  icon: Icon(
-                                    mat.isCompleted
-                                        ? Icons.check_circle_rounded
-                                        : Icons.download_rounded,
-                                    color: mat.isCompleted ? AppColors.mintDark : AppColors.primary,
+                                  IconButton(
+                                    icon: Icon(
+                                      mat.isCompleted
+                                          ? Icons.check_circle_rounded
+                                          : Icons.download_rounded,
+                                      color: mat.isCompleted
+                                          ? AppColors.mintDark
+                                          : AppColors.primary,
+                                    ),
+                                    onPressed: () {
+                                      ScaffoldMessenger.of(
+                                        context,
+                                      ).showSnackBar(
+                                        SnackBar(
+                                          content: Text(
+                                            'Membuka ${mat.title}...',
+                                          ),
+                                          behavior: SnackBarBehavior.floating,
+                                        ),
+                                      );
+                                    },
                                   ),
-                                  onPressed: () {
-                                    ScaffoldMessenger.of(context).showSnackBar(
-                                      SnackBar(
-                                        content: Text('Membuka ${mat.title}...'),
-                                        behavior: SnackBarBehavior.floating,
-                                      ),
-                                    );
-                                  },
-                                ),
-                              ],
-                            ),
-                          );
-                        },
-                      ),
+                                ],
+                              ),
+                            );
+                          },
+                        ),
+                ),
 
                 // Tab 2: Info & BNSP
                 ListView(
@@ -243,27 +286,51 @@ class _ClassDetailScreenState extends State<ClassDetailScreen>
                         children: [
                           const Row(
                             children: [
-                              Icon(Icons.verified_rounded, color: AppColors.primary, size: 20),
+                              Icon(
+                                Icons.verified_rounded,
+                                color: AppColors.primary,
+                                size: 20,
+                              ),
                               SizedBox(width: 8),
                               Text(
                                 'Standar Kompetensi Lulusan',
-                                style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: AppColors.textPrimary),
+                                style: TextStyle(
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.bold,
+                                  color: AppColors.textPrimary,
+                                ),
                               ),
                             ],
                           ),
                           const SizedBox(height: 10),
                           const Text(
                             'Kelas ini mengacu pada Standar Kompetensi Kerja Nasional Indonesia (SKKNI) Bidang Kejuruan Kreatif dan Teknologi. Peserta yang menyelesaikan seluruh modul berhak mengikuti Uji Kompetensi BNSP secara gratis.',
-                            style: TextStyle(fontSize: 12.5, color: AppColors.textSecondary, height: 1.4),
+                            style: TextStyle(
+                              fontSize: 12.5,
+                              color: AppColors.textSecondary,
+                              height: 1.4,
+                            ),
                           ),
                           const SizedBox(height: 16),
                           const Divider(),
                           const SizedBox(height: 10),
-                          const Text('Syarat Kelulusan:', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+                          const Text(
+                            'Syarat Kelulusan:',
+                            style: TextStyle(
+                              fontWeight: FontWeight.bold,
+                              fontSize: 13,
+                            ),
+                          ),
                           const SizedBox(height: 6),
-                          _buildRequirementItem('Presensi tatap muka minimal 85% dari total 24 sesi.'),
-                          _buildRequirementItem('Menyelesaikan seluruh tugas praktik & portofolio akhir.'),
-                          _buildRequirementItem('Lulus evaluasi teori dan simulasi wawancara asesor.'),
+                          _buildRequirementItem(
+                            'Presensi tatap muka minimal 85% dari total 24 sesi.',
+                          ),
+                          _buildRequirementItem(
+                            'Menyelesaikan seluruh tugas praktik & portofolio akhir.',
+                          ),
+                          _buildRequirementItem(
+                            'Lulus evaluasi teori dan simulasi wawancara asesor.',
+                          ),
                         ],
                       ),
                     ),
@@ -283,10 +350,20 @@ class _ClassDetailScreenState extends State<ClassDetailScreen>
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Icon(Icons.check_circle_outline_rounded, size: 16, color: AppColors.mintDark),
+          const Icon(
+            Icons.check_circle_outline_rounded,
+            size: 16,
+            color: AppColors.mintDark,
+          ),
           const SizedBox(width: 8),
           Expanded(
-            child: Text(text, style: const TextStyle(fontSize: 12, color: AppColors.textPrimary)),
+            child: Text(
+              text,
+              style: const TextStyle(
+                fontSize: 12,
+                color: AppColors.textPrimary,
+              ),
+            ),
           ),
         ],
       ),
