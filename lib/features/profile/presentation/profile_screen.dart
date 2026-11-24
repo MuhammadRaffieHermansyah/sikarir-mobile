@@ -6,6 +6,7 @@ import 'package:sikarir/features/attendance/attendance.dart';
 import 'package:sikarir/features/auth/presentation/providers/auth_provider.dart';
 import 'package:sikarir/features/partner/partner.dart';
 import 'package:sikarir/features/training/training.dart';
+import 'package:sikarir/features/profile/presentation/pages/change_password_screen.dart';
 import 'package:sikarir/features/profile/presentation/pages/complete_profile_screen.dart';
 import 'package:sikarir/features/profile/presentation/providers/peserta_provider.dart';
 import 'package:sikarir/features/profile/presentation/widgets/profile_avatar.dart';
@@ -258,8 +259,13 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   _buildMenuItem(
                     Icons.settings_outlined,
                     'Pengaturan Akun',
-                    'Notifikasi & keamanan',
-                    onTap: () {},
+                    'Ganti password & keamanan',
+                    onTap: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(builder: (_) => const ChangePasswordScreen()),
+                      );
+                    },
                   ),
                   _buildMenuItem(
                     Icons.help_outline,
