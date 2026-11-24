@@ -43,6 +43,18 @@ DateTime? tryParseApiDate(String raw) {
   return DateTime(y, m, d);
 }
 
+/// '08:05:00' → '08:05'; teks yang bukan jam dikembalikan apa adanya.
+String formatApiTimeLabel(String raw) {
+  final match = RegExp(r'^(\d{2}):(\d{2})').firstMatch(raw.trim());
+  return match == null ? raw : '${match.group(1)}:${match.group(2)}';
+}
+
+/// 24 Nov – 26 Nov 2026 (atau satu tanggal bila awal = akhir).
+String formatDateRangeLabel(DateTime start, DateTime end) {
+  if (start == end) return formatLongDate(start);
+  return '${formatLongDate(start)} – ${formatLongDate(end)}';
+}
+
 /// Label tanggal untuk tampilan; bila tak terbaca, kembalikan teks aslinya.
 String formatApiDateLabel(String raw) {
   final d = tryParseApiDate(raw);

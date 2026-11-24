@@ -115,6 +115,30 @@ class _AttendanceScreenState extends State<AttendanceScreen>
     if (mounted) provider.fetchAttendanceData(token);
   }
 
+  Future<void> _handlePresensiPulang(
+      BuildContext ctx, AttendanceItem today, TrainingClassModel? kelas) async {
+    final provider = ctx.read<AttendanceProvider>();
+    final token = _token;
+
+    await showModalBottomSheet(
+      context: ctx,
+      isDismissible: false,
+      enableDrag: false,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (_) => LocationCheckSheet(
+        provider: provider,
+        token: token,
+        pesertaId: _resolvePesertaId(),
+        jadwalId: today.classId,
+        target: kelas != null ? _targetFor(kelas) : AttendanceTarget.defaultTarget,
+        action: AttendanceAction.pulang,
+        absenId: today.id,
+      ),
+    );
+    if (mounted) provider.fetchAttendanceData(token);
+  }
+
   Future<void> _handleIzinSakit(
       BuildContext ctx, String type, TrainingClassModel kelas) async {
     final provider = ctx.read<AttendanceProvider>();
@@ -235,8 +259,8 @@ class _AttendanceScreenState extends State<AttendanceScreen>
                   provider: provider,
                   classProvider: classProvider,
                   kelas: kelas,
-                  hasActive: active.isNotEmpty,
-                  alreadyDone: today != null,
+                  activeClasses: active,
+                  today: today,
                   todayUnknown: todayUnknown,
                 ),
               ],
@@ -252,10 +276,11 @@ class _AttendanceScreenState extends State<AttendanceScreen>
     required AttendanceProvider provider,
     required TrainingClassProvider classProvider,
     required TrainingClassModel? kelas,
-    required bool hasActive,
-    required bool alreadyDone,
+    required List<TrainingClassModel> activeClasses,
+    required AttendanceItem? today,
     required bool todayUnknown,
   }) {
+    final hasActive = activeClasses.isNotEmpty;
     const spinner = Center(
       child: Padding(
         padding: EdgeInsets.all(12),
@@ -263,11 +288,39 @@ class _AttendanceScreenState extends State<AttendanceScreen>
       ),
     );
 
-    if (alreadyDone) {
-      return const [
+    if (today != null) {
+      if (today.canClockOut) {
+        // Target pulang mengikuti kelas dari catatan masuk hari ini.
+        TrainingClassModel? kelasMasuk = kelas;
+        for (final c in activeClasses) {
+          if (c.jadwalId == today.classId) {
+            kelasMasuk = c;
+            break;
+          }
+        }
+        return [
+          ElevatedButton.icon(
+            onPressed: () => _handlePresensiPulang(context, today, kelasMasuk),
+            icon: const Icon(Icons.logout_rounded, size: 22),
+            label: const Text('Presensi Pulang',
+                style: TextStyle(fontSize: 15, fontWeight: FontWeight.w800)),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppColors.primary,
+              foregroundColor: Colors.white,
+              minimumSize: const Size.fromHeight(52),
+              shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(14)),
+              elevation: 0,
+            ),
+          ),
+        ];
+      }
+      return [
         AttendanceInfoNote(
           icon: Icons.info_outline_rounded,
-          text: 'Anda sudah melakukan presensi hari ini.',
+          text: today.status == 'hadir'
+              ? 'Presensi masuk dan pulang hari ini sudah tercatat.'
+              : 'Anda sudah melakukan presensi hari ini.',
         ),
       ];
     }
