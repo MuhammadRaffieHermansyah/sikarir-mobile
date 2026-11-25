@@ -6,6 +6,7 @@ import 'package:http/http.dart' as http;
 import 'package:http_parser/http_parser.dart';
 import 'package:sikarir/core/constants/api_constants.dart';
 import 'package:sikarir/features/attendance/data/models/attendance_model.dart';
+import 'package:sikarir/features/instructor/data/models/attendance_session_model.dart';
 
 enum AttendanceErrorType { network, timeout, unauthorized, server, validation }
 
@@ -170,6 +171,35 @@ class AttendanceService {
     final data = decoded is Map ? (decoded['data'] ?? decoded) : null;
     if (data is Map<String, dynamic> && data.containsKey('id_absen')) {
       return AttendanceItem.fromMap(data);
+    }
+    return null;
+  }
+
+  /// Sesi presensi yang sedang dibuka instruktur untuk [classId].
+  /// `null` = tidak ada sesi yang dibuka (404 atau tidak ada data).
+  Future<AttendanceSession?> getOpenSession(
+    String classId, [
+    String? token,
+  ]) async {
+    final response = await _send(
+      () => client.get(
+        Uri.parse(ApiConstants.sesiPresensiAktif(classId)),
+        headers: _headers(token),
+      ),
+      const Duration(seconds: 8),
+    );
+
+    if (response.statusCode == 404) return null;
+    if (response.statusCode != 200) {
+      throw _errorFromStatus(response, 'Gagal memeriksa sesi presensi.');
+    }
+
+    final decoded = json.decode(response.body);
+    final data = decoded is Map ? (decoded['data'] ?? decoded) : null;
+    if (data is Map<String, dynamic> &&
+        (data.containsKey('id_sesi') || data.containsKey('id'))) {
+      final session = AttendanceSession.fromMap(data);
+      return session.isOpen ? session : null;
     }
     return null;
   }

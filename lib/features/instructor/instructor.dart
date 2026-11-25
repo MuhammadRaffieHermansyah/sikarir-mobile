@@ -1,4 +1,6 @@
+export 'data/models/attendance_session_model.dart';
 export 'data/models/class_module_model.dart';
+export 'presentation/pages/instructor_attendance_screen.dart';
 export 'data/services/instructor_service.dart';
 export 'presentation/providers/instructor_provider.dart';
 export 'presentation/pages/instructor_navigation_screen.dart';

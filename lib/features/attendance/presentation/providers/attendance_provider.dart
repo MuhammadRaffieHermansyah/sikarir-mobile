@@ -3,6 +3,7 @@ import 'package:sikarir/features/attendance/data/models/attendance_model.dart';
 import 'package:sikarir/features/attendance/data/repositories/attendance_repository.dart';
 import 'package:sikarir/features/attendance/data/services/attendance_service.dart';
 import 'package:sikarir/features/attendance/utils/attendance_formatters.dart';
+import 'package:sikarir/features/instructor/data/models/attendance_session_model.dart';
 
 class AttendanceProvider extends ChangeNotifier {
   final AttendanceRepository repository;
@@ -86,6 +87,34 @@ class AttendanceProvider extends ChangeNotifier {
     final t = _todayAttendance;
     if (t != null && t.classId == jadwalId) return t;
     return null;
+  }
+
+  // ─── Sesi presensi dibuka instruktur ─────────────────────────────────────
+  final Map<String, AttendanceSession?> _openSessions = {};
+  final Set<String> _sessionChecked = {};
+
+  /// Sesi yang sedang dibuka untuk [classId]; `null` bila tidak ada.
+  AttendanceSession? openSessionFor(String classId) => _openSessions[classId];
+
+  /// true hanya bila status sesi kelas ini berhasil diperiksa ke server.
+  bool sessionChecked(String classId) => _sessionChecked.contains(classId);
+
+  Future<void> fetchOpenSessions(Iterable<String> classIds,
+      [String? token]) async {
+    await Future.wait([
+      for (final id in classIds.toSet())
+        () async {
+          try {
+            _openSessions[id] = await repository.getOpenSession(id, token);
+            _sessionChecked.add(id);
+          } catch (e) {
+            _sessionChecked.remove(id);
+            _openSessions.remove(id);
+            if (kDebugMode) debugPrint('Open session error: $e');
+          }
+        }(),
+    ]);
+    notifyListeners();
   }
 
   // ─── Actions ─────────────────────────────────────────────────────────────

@@ -23,8 +23,12 @@ class LocationCheckSheet extends StatefulWidget {
   /// Wajib untuk [AttendanceAction.pulang]: id catatan presensi masuk hari ini.
   final String? absenId;
 
+  /// Sesi presensi yang dibuka instruktur (dikirim saat presensi masuk).
+  final String? sessionId;
+
   const LocationCheckSheet({
     super.key,
+    this.sessionId,
     required this.provider,
     required this.token,
     required this.pesertaId,
@@ -104,6 +108,7 @@ class _LocationCheckSheetState extends State<LocationCheckSheet> {
         final notes = _notesController.text.trim();
 
         final request = AttendanceSubmitRequest(
+          sessionId: widget.sessionId,
           jadwalId: widget.jadwalId,
           pesertaId: widget.pesertaId,
           tanggal: formatApiDate(now),

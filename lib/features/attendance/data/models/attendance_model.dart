@@ -317,7 +317,11 @@ class AttendanceSubmitRequest {
   final String? tanggalSelesai;
   final String? attachmentPath;
 
+  /// Sesi presensi yang dibuka instruktur (bila ada).
+  final String? sessionId;
+
   AttendanceSubmitRequest({
+    this.sessionId,
     required this.jadwalId,
     required this.pesertaId,
     required this.tanggal,
@@ -333,6 +337,7 @@ class AttendanceSubmitRequest {
   Map<String, dynamic> toMap() {
     return {
       'id_jadwal': jadwalId,
+      if (sessionId != null && sessionId!.isNotEmpty) 'id_sesi': sessionId,
       'id_peserta': pesertaId,
       'tanggal': tanggal,
       'jam_hadir': jamHadir,

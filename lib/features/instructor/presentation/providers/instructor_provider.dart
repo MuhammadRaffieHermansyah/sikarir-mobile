@@ -1,4 +1,5 @@
 import 'package:flutter/foundation.dart';
+import 'package:sikarir/features/instructor/data/models/attendance_session_model.dart';
 import 'package:sikarir/features/instructor/data/models/class_module_model.dart';
 import 'package:sikarir/features/instructor/data/services/instructor_service.dart';
 import 'package:sikarir/features/training/data/models/training_class_model.dart';
@@ -42,6 +43,9 @@ class InstructorProvider extends ChangeNotifier {
     _modules.clear();
     _moduleErrors.clear();
     _loadingModules.clear();
+    _sessions.clear();
+    _sessionErrors.clear();
+    _loadingSessions.clear();
   }
 
   String _msg(Object e) => e.toString().replaceFirst('Exception: ', '');
@@ -144,4 +148,80 @@ class InstructorProvider extends ChangeNotifier {
     String materialId,
     String? token,
   ) => _mutate(classId, token, () => service.deleteMaterial(materialId, token));
+
+  // --- Sesi presensi ---
+  final Map<String, List<AttendanceSession>> _sessions = {};
+  final Set<String> _loadingSessions = {};
+  final Map<String, String> _sessionErrors = {};
+
+  List<AttendanceSession> sessionsOf(String classId) =>
+      _sessions[classId] ?? const [];
+  bool isLoadingSessions(String classId) => _loadingSessions.contains(classId);
+  bool hasLoadedSessions(String classId) => _sessions.containsKey(classId);
+  String? sessionError(String classId) => _sessionErrors[classId];
+
+  Future<void> fetchSessions(String classId, String? token) async {
+    _loadingSessions.add(classId);
+    _sessionErrors.remove(classId);
+    notifyListeners();
+    try {
+      final list = await service.getAttendanceSessions(classId, token);
+      list.sort((a, b) => a.meetingNumber.compareTo(b.meetingNumber));
+      _sessions[classId] = list;
+    } catch (e) {
+      _sessionErrors[classId] = _msg(e);
+    } finally {
+      _loadingSessions.remove(classId);
+      notifyListeners();
+    }
+  }
+
+  Future<void> _mutateSessions(
+    String classId,
+    String? token,
+    Future<void> Function() action,
+  ) async {
+    _isSaving = true;
+    notifyListeners();
+    try {
+      await action();
+      await fetchSessions(classId, token);
+    } catch (e) {
+      throw Exception(_msg(e));
+    } finally {
+      _isSaving = false;
+      notifyListeners();
+    }
+  }
+
+  Future<void> createSession(
+    String classId,
+    AttendanceSessionInput input,
+    String? token,
+  ) => _mutateSessions(
+    classId,
+    token,
+    () => service.createAttendanceSession(classId, input, token),
+  );
+
+  Future<void> setSessionOpen(
+    String classId,
+    String sessionId,
+    bool open,
+    String? token,
+  ) => _mutateSessions(
+    classId,
+    token,
+    () => service.setAttendanceSessionOpen(sessionId, open, token),
+  );
+
+  Future<void> deleteSession(
+    String classId,
+    String sessionId,
+    String? token,
+  ) => _mutateSessions(
+    classId,
+    token,
+    () => service.deleteAttendanceSession(sessionId, token),
+  );
 }
