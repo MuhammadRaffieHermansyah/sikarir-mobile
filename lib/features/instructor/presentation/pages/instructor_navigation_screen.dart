@@ -5,6 +5,7 @@ import 'package:sikarir/features/auth/presentation/providers/auth_provider.dart'
 import 'package:sikarir/features/instructor/presentation/pages/instructor_class_detail_screen.dart';
 import 'package:sikarir/features/instructor/presentation/pages/instructor_profile_tab.dart';
 import 'package:sikarir/features/instructor/presentation/providers/instructor_provider.dart';
+import 'package:sikarir/features/instructor/presentation/widgets/instructor_ui.dart';
 import 'package:sikarir/features/training/data/models/training_class_model.dart';
 
 /// Shell navigasi untuk pengguna dengan role instruktur.
@@ -27,21 +28,9 @@ class _InstructorNavigationScreenState
         index: _index,
         children: const [_TeachingClassesTab(), InstructorProfileTab()],
       ),
-      bottomNavigationBar: NavigationBar(
-        selectedIndex: _index,
-        onDestinationSelected: (i) => setState(() => _index = i),
-        destinations: const [
-          NavigationDestination(
-            icon: Icon(Icons.class_outlined),
-            selectedIcon: Icon(Icons.class_rounded),
-            label: 'Kelas Saya',
-          ),
-          NavigationDestination(
-            icon: Icon(Icons.person_outline_rounded),
-            selectedIcon: Icon(Icons.person_rounded),
-            label: 'Profil',
-          ),
-        ],
+      bottomNavigationBar: InstructorBottomNav(
+        currentIndex: _index,
+        onSelected: (i) => setState(() => _index = i),
       ),
     );
   }
@@ -79,101 +68,78 @@ class _TeachingClassesTabState extends State<_TeachingClassesTab> {
         child: CircularProgressIndicator(color: AppColors.primary),
       );
     } else if (provider.classesError != null && provider.classes.isEmpty) {
-      body = _Message(
+      body = InstructorMessage(
         icon: Icons.cloud_off_rounded,
         title: 'Gagal Memuat Kelas',
         message: provider.classesError!,
         onRetry: _load,
+        error: true,
       );
     } else if (provider.classes.isEmpty) {
-      body = const _Message(
+      body = const InstructorMessage(
         icon: Icons.school_outlined,
         title: 'Belum Ada Kelas',
         message: 'Anda belum ditugaskan mengampu kelas pelatihan mana pun.',
       );
     } else {
       body = ListView.builder(
-        padding: const EdgeInsets.all(16),
-        itemCount: provider.classes.length,
-        itemBuilder: (_, i) => _ClassCard(item: provider.classes[i]),
+        physics: const AlwaysScrollableScrollPhysics(),
+        padding: const EdgeInsets.fromLTRB(16, 4, 16, 16),
+        itemCount: provider.classes.length + 1,
+        itemBuilder: (_, i) {
+          if (i == 0) return _Greeting(name: name);
+          return _ClassCard(item: provider.classes[i - 1]);
+        },
       );
     }
 
     return Scaffold(
       backgroundColor: AppColors.background,
-      appBar: AppBar(
-        title: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
+      body: SafeArea(
+        child: Column(
           children: [
-            const Text(
-              'Kelas yang Saya Ampu',
-              style: TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.w800,
-                color: AppColors.textPrimary,
+            InstructorTabHeader(sectionTitle: 'Kelas Saya', name: name),
+            Expanded(
+              child: RefreshIndicator(
+                onRefresh: _load,
+                color: AppColors.primary,
+                child: body,
               ),
             ),
-            if (name.isNotEmpty)
-              Text(
-                'Halo, $name',
-                style: const TextStyle(
-                  fontSize: 12,
-                  color: AppColors.textSecondary,
-                ),
-              ),
           ],
         ),
       ),
-      body: RefreshIndicator(onRefresh: _load, child: body),
     );
   }
 }
 
-class _Message extends StatelessWidget {
-  final IconData icon;
-  final String title;
-  final String message;
-  final VoidCallback? onRetry;
-
-  const _Message({
-    required this.icon,
-    required this.title,
-    required this.message,
-    this.onRetry,
-  });
+class _Greeting extends StatelessWidget {
+  final String name;
+  const _Greeting({required this.name});
 
   @override
   Widget build(BuildContext context) {
-    // ListView agar pull-to-refresh tetap bisa dipakai.
-    return ListView(
-      children: [
-        const SizedBox(height: 120),
-        Icon(icon, size: 48, color: AppColors.textMuted),
-        const SizedBox(height: 12),
-        Text(
-          title,
-          textAlign: TextAlign.center,
-          style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
-        ),
-        Padding(
-          padding: const EdgeInsets.all(16),
-          child: Text(
-            message,
-            textAlign: TextAlign.center,
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(4, 4, 4, 14),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            name.isNotEmpty ? 'Halo, $name 👋' : 'Halo, Instruktur 👋',
             style: const TextStyle(
-              fontSize: 12.5,
-              color: AppColors.textSecondary,
+              fontSize: 20,
+              fontWeight: FontWeight.w800,
+              color: AppColors.textPrimary,
+              letterSpacing: -0.3,
             ),
           ),
-        ),
-        if (onRetry != null)
-          Center(
-            child: TextButton(
-              onPressed: onRetry,
-              child: const Text('Coba lagi'),
-            ),
+          const SizedBox(height: 2),
+          const Text(
+            'Kelola modul, materi, dan presensi kelas yang Anda ampu.',
+            style: TextStyle(fontSize: 12.5, color: AppColors.textSecondary),
           ),
-      ],
+        ],
+      ),
     );
   }
 }
@@ -184,79 +150,101 @@ class _ClassCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      margin: const EdgeInsets.only(bottom: 14),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(18),
-        border: Border.all(color: AppColors.cardBorder),
+    return InstructorCard(
+      onTap: () => Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (_) => InstructorClassDetailScreen(trainingClass: item),
+        ),
       ),
-      child: Material(
-        color: Colors.transparent,
-        child: InkWell(
-          borderRadius: BorderRadius.circular(18),
-          onTap: () => Navigator.push(
-            context,
-            MaterialPageRoute(
-              builder: (_) => InstructorClassDetailScreen(trainingClass: item),
-            ),
-          ),
-          child: Padding(
-            padding: const EdgeInsets.all(18),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  item.code,
-                  style: const TextStyle(
-                    fontSize: 11.5,
-                    fontWeight: FontWeight.bold,
-                    color: AppColors.textSecondary,
-                  ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                width: 44,
+                height: 44,
+                decoration: BoxDecoration(
+                  color: AppColors.mintBg,
+                  borderRadius: BorderRadius.circular(12),
                 ),
-                const SizedBox(height: 6),
-                Text(
-                  item.title,
-                  style: const TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.w800,
-                    color: AppColors.textPrimary,
-                  ),
+                child: const Icon(
+                  Icons.school_rounded,
+                  color: AppColors.primary,
+                  size: 24,
                 ),
-                const SizedBox(height: 4),
-                Text(
-                  '${item.category} • ${item.totalSessions} pertemuan',
-                  style: const TextStyle(
-                    fontSize: 12,
-                    color: AppColors.textSecondary,
-                  ),
-                ),
-                const SizedBox(height: 12),
-                const Row(
-                  mainAxisAlignment: MainAxisAlignment.end,
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      'Kelola Modul & Materi',
-                      style: TextStyle(
-                        fontSize: 12,
-                        fontWeight: FontWeight.w800,
-                        color: AppColors.primary,
+                      item.code,
+                      style: const TextStyle(
+                        fontSize: 11.5,
+                        fontWeight: FontWeight.bold,
+                        color: AppColors.textSecondary,
                       ),
                     ),
-                    SizedBox(width: 4),
-                    Icon(
-                      Icons.arrow_forward_ios_rounded,
-                      size: 12,
-                      color: AppColors.primary,
+                    const SizedBox(height: 2),
+                    Text(
+                      item.title,
+                      style: const TextStyle(
+                        fontSize: 15.5,
+                        fontWeight: FontWeight.w800,
+                        color: AppColors.textPrimary,
+                      ),
                     ),
                   ],
                 ),
-              ],
-            ),
+              ),
+            ],
           ),
-        ),
+          const SizedBox(height: 12),
+          Wrap(
+            spacing: 8,
+            runSpacing: 6,
+            children: [
+              InstructorChip(
+                label: item.category,
+                background: AppColors.blueGray,
+                foreground: AppColors.blueGrayText,
+                icon: Icons.category_outlined,
+              ),
+              InstructorChip(
+                label: '${item.totalSessions} pertemuan',
+                background: AppColors.mintBg,
+                foreground: AppColors.mintDark,
+                icon: Icons.event_note_rounded,
+              ),
+            ],
+          ),
+          const SizedBox(height: 14),
+          const Divider(height: 1, color: AppColors.cardBorder),
+          const SizedBox(height: 12),
+          const Row(
+            mainAxisAlignment: MainAxisAlignment.end,
+            children: [
+              Text(
+                'Kelola Modul & Materi',
+                style: TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w800,
+                  color: AppColors.primary,
+                ),
+              ),
+              SizedBox(width: 4),
+              Icon(
+                Icons.arrow_forward_ios_rounded,
+                size: 12,
+                color: AppColors.primary,
+              ),
+            ],
+          ),
+        ],
       ),
     );
   }
 }
-

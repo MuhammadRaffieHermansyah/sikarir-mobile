@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:sikarir/core/constants/app_theme.dart';
 import 'package:sikarir/features/attendance/data/services/location_service.dart';
 import 'package:sikarir/features/instructor/data/models/attendance_session_model.dart';
+import 'package:sikarir/features/instructor/presentation/widgets/instructor_ui.dart';
 
 Future<AttendanceSessionInput?> showAttendanceSessionFormSheet(
   BuildContext context, {
@@ -14,8 +15,9 @@ Future<AttendanceSessionInput?> showAttendanceSessionFormSheet(
   return showModalBottomSheet<AttendanceSessionInput>(
     context: context,
     isScrollControlled: true,
+    backgroundColor: AppColors.background,
     shape: const RoundedRectangleBorder(
-      borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
     ),
     builder: (_) => _SessionForm(
       meetingCount: meetingCount,
@@ -135,7 +137,9 @@ class _SessionFormState extends State<_SessionForm> {
   Widget build(BuildContext context) {
     final hasLocation = _lat != null && _lng != null;
     return Padding(
-      padding: EdgeInsets.only(bottom: MediaQuery.of(context).viewInsets.bottom),
+      padding: EdgeInsets.only(
+        bottom: MediaQuery.of(context).viewInsets.bottom,
+      ),
       child: SingleChildScrollView(
         padding: const EdgeInsets.all(20),
         child: Form(
@@ -144,18 +148,15 @@ class _SessionFormState extends State<_SessionForm> {
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Text(
-                'Buat Sesi Presensi',
-                style: TextStyle(
-                  fontSize: 17,
-                  fontWeight: FontWeight.w800,
-                  color: AppColors.textPrimary,
-                ),
+              const InstructorSheetHeader(
+                title: 'Buat Sesi Presensi',
+                subtitle: 'Atur jadwal dan lokasi presensi peserta',
+                icon: Icons.how_to_reg_rounded,
               ),
-              const SizedBox(height: 16),
+              const SizedBox(height: 20),
               DropdownButtonFormField<int>(
                 initialValue: _meeting,
-                decoration: _dec('Pertemuan'),
+                decoration: _dec('Pertemuan', icon: Icons.event_note_rounded),
                 items: [
                   for (var i = 1; i <= widget.meetingCount; i++)
                     DropdownMenuItem(value: i, child: Text('Pertemuan $i')),
@@ -163,27 +164,30 @@ class _SessionFormState extends State<_SessionForm> {
                 onChanged: (v) => setState(() => _meeting = v ?? _meeting),
               ),
               const SizedBox(height: 12),
-              OutlinedButton.icon(
-                onPressed: _pickDate,
-                icon: const Icon(Icons.event_rounded),
-                label: Text('Tanggal: ${_fmtDate(_date)}'),
+              _pickerTile(
+                Icons.event_rounded,
+                'Tanggal',
+                _fmtDate(_date),
+                _pickDate,
               ),
-              const SizedBox(height: 8),
+              const SizedBox(height: 10),
               Row(
                 children: [
                   Expanded(
-                    child: OutlinedButton.icon(
-                      onPressed: () => _pickTime(true),
-                      icon: const Icon(Icons.schedule_rounded),
-                      label: Text('Mulai ${_fmtTime(_start)}'),
+                    child: _pickerTile(
+                      Icons.schedule_rounded,
+                      'Mulai',
+                      _fmtTime(_start),
+                      () => _pickTime(true),
                     ),
                   ),
-                  const SizedBox(width: 8),
+                  const SizedBox(width: 10),
                   Expanded(
-                    child: OutlinedButton.icon(
-                      onPressed: () => _pickTime(false),
-                      icon: const Icon(Icons.schedule_rounded),
-                      label: Text('Selesai ${_fmtTime(_end)}'),
+                    child: _pickerTile(
+                      Icons.schedule_rounded,
+                      'Selesai',
+                      _fmtTime(_end),
+                      () => _pickTime(false),
                     ),
                   ),
                 ],
@@ -191,7 +195,10 @@ class _SessionFormState extends State<_SessionForm> {
               const SizedBox(height: 12),
               TextFormField(
                 controller: _radius,
-                decoration: _dec('Radius presensi (meter)'),
+                decoration: _dec(
+                  'Radius presensi (meter)',
+                  icon: Icons.radar_rounded,
+                ),
                 keyboardType: TextInputType.number,
                 validator: (v) {
                   final n = int.tryParse((v ?? '').trim());
@@ -201,26 +208,59 @@ class _SessionFormState extends State<_SessionForm> {
                 },
               ),
               const SizedBox(height: 12),
-              Text(
-                hasLocation
-                    ? 'Lokasi: ${_lat!.toStringAsFixed(5)}, ${_lng!.toStringAsFixed(5)}'
-                    : 'Lokasi: memakai titik default kelas/BLK',
-                style: const TextStyle(
-                  fontSize: 12,
-                  color: AppColors.textSecondary,
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: AppColors.mintBg,
+                  borderRadius: BorderRadius.circular(14),
+                  border: Border.all(color: AppColors.cardBorder),
                 ),
-              ),
-              const SizedBox(height: 6),
-              OutlinedButton.icon(
-                onPressed: _locating ? null : _useMyLocation,
-                icon: _locating
-                    ? const SizedBox(
-                        width: 16,
-                        height: 16,
-                        child: CircularProgressIndicator(strokeWidth: 2),
-                      )
-                    : const Icon(Icons.my_location_rounded),
-                label: const Text('Pakai lokasi saya saat ini'),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        const Icon(
+                          Icons.place_rounded,
+                          size: 18,
+                          color: AppColors.mintDark,
+                        ),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Text(
+                            hasLocation
+                                ? 'Lokasi: ${_lat!.toStringAsFixed(5)}, ${_lng!.toStringAsFixed(5)}'
+                                : 'Lokasi: memakai titik default kelas/BLK',
+                            style: const TextStyle(
+                              fontSize: 12.5,
+                              color: AppColors.mintDark,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 8),
+                    OutlinedButton.icon(
+                      onPressed: _locating ? null : _useMyLocation,
+                      style: OutlinedButton.styleFrom(
+                        foregroundColor: AppColors.primary,
+                        backgroundColor: Colors.white,
+                        side: const BorderSide(color: AppColors.cardBorder),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                      ),
+                      icon: _locating
+                          ? const SizedBox(
+                              width: 16,
+                              height: 16,
+                              child: CircularProgressIndicator(strokeWidth: 2),
+                            )
+                          : const Icon(Icons.my_location_rounded, size: 18),
+                      label: const Text('Pakai lokasi saya saat ini'),
+                    ),
+                  ],
+                ),
               ),
               if (_error != null)
                 Padding(
@@ -230,18 +270,11 @@ class _SessionFormState extends State<_SessionForm> {
                     style: TextStyle(fontSize: 12, color: Colors.red.shade700),
                   ),
                 ),
-              const SizedBox(height: 16),
-              SizedBox(
-                width: double.infinity,
-                child: ElevatedButton(
-                  onPressed: _submit,
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: AppColors.primary,
-                    foregroundColor: Colors.white,
-                    padding: const EdgeInsets.symmetric(vertical: 14),
-                  ),
-                  child: const Text('Buat Sesi'),
-                ),
+              const SizedBox(height: 18),
+              InstructorPrimaryButton(
+                label: 'Buat Sesi',
+                icon: Icons.add_rounded,
+                onPressed: _submit,
               ),
             ],
           ),
@@ -250,8 +283,54 @@ class _SessionFormState extends State<_SessionForm> {
     );
   }
 
-  InputDecoration _dec(String label) => InputDecoration(
-    labelText: label,
-    border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-  );
+  Widget _pickerTile(
+    IconData icon,
+    String label,
+    String value,
+    VoidCallback onTap,
+  ) {
+    return InkWell(
+      borderRadius: BorderRadius.circular(14),
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(color: AppColors.cardBorder),
+        ),
+        child: Row(
+          children: [
+            Icon(icon, size: 20, color: AppColors.primary),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    label,
+                    style: const TextStyle(
+                      fontSize: 11,
+                      color: AppColors.textSecondary,
+                    ),
+                  ),
+                  Text(
+                    value,
+                    style: const TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w800,
+                      color: AppColors.textPrimary,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  InputDecoration _dec(String label, {IconData? icon}) =>
+      instructorInputDecoration(label, icon: icon);
 }

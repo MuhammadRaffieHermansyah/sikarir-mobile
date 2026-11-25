@@ -5,6 +5,7 @@ import 'package:image_picker/image_picker.dart';
 import 'package:provider/provider.dart';
 import 'package:sikarir/core/constants/app_theme.dart';
 import 'package:sikarir/features/auth/presentation/providers/auth_provider.dart';
+import 'package:sikarir/features/instructor/presentation/widgets/instructor_ui.dart';
 import 'package:sikarir/features/profile/data/models/instructor_profile_model.dart';
 import 'package:sikarir/features/profile/data/services/account_service.dart';
 
@@ -31,9 +32,7 @@ class _InstructorProfileEditScreenState
   late final _name = TextEditingController(text: widget.initial.name);
   late final _phone = TextEditingController(text: widget.initial.phone);
   late final _bio = TextEditingController(text: widget.initial.bio);
-  late final _expertise = TextEditingController(
-    text: widget.initial.expertise,
-  );
+  late final _expertise = TextEditingController(text: widget.initial.expertise);
   late final AccountService _service = widget.service ?? AccountService();
   XFile? _photo;
   bool _saving = false;
@@ -102,11 +101,8 @@ class _InstructorProfileEditScreenState
     }
   }
 
-  InputDecoration _decoration(String label, {String? hint}) => InputDecoration(
-    labelText: label,
-    hintText: hint,
-    border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-  );
+  InputDecoration _decoration(String label, {String? hint, IconData? icon}) =>
+      instructorInputDecoration(label, hint: hint, icon: icon);
 
   @override
   Widget build(BuildContext context) {
@@ -117,15 +113,9 @@ class _InstructorProfileEditScreenState
 
     return Scaffold(
       backgroundColor: AppColors.background,
-      appBar: AppBar(
-        title: const Text(
-          'Ubah Profil',
-          style: TextStyle(
-            fontSize: 18,
-            fontWeight: FontWeight.w800,
-            color: AppColors.textPrimary,
-          ),
-        ),
+      appBar: const InstructorAppBar(
+        title: 'Ubah Profil',
+        subtitle: 'Nama, foto, bio, dan keahlian',
       ),
       body: ListView(
         padding: const EdgeInsets.all(16),
@@ -169,85 +159,79 @@ class _InstructorProfileEditScreenState
             ),
           ),
           const SizedBox(height: 20),
-          Form(
-            key: _formKey,
-            child: Column(
-              children: [
-                TextFormField(
-                  controller: _name,
-                  decoration: _decoration('Nama lengkap'),
-                  maxLength: 100,
-                  validator: (v) => (v == null || v.trim().isEmpty)
-                      ? 'Nama wajib diisi'
-                      : null,
-                ),
-                TextFormField(
-                  initialValue: widget.initial.email,
-                  enabled: false,
-                  decoration: _decoration('Email (tidak dapat diubah)'),
-                ),
-                const SizedBox(height: 14),
-                TextFormField(
-                  controller: _phone,
-                  keyboardType: TextInputType.phone,
-                  decoration: _decoration('Nomor WhatsApp (opsional)'),
-                  validator: (v) {
-                    final value = (v ?? '').trim();
-                    if (value.isEmpty) return null;
-                    return RegExp(r'^\d{8,15}$').hasMatch(value)
-                        ? null
-                        : 'Nomor harus 8–15 digit angka';
-                  },
-                ),
-                const SizedBox(height: 14),
-                TextFormField(
-                  controller: _expertise,
-                  maxLength: 200,
-                  decoration: _decoration(
-                    'Keahlian (opsional)',
-                    hint: 'Pisahkan dengan koma, mis. HTML, Laravel',
+          InstructorCard(
+            padding: const EdgeInsets.all(16),
+            child: Form(
+              key: _formKey,
+              child: Column(
+                children: [
+                  TextFormField(
+                    controller: _name,
+                    decoration: _decoration(
+                      'Nama lengkap',
+                      icon: Icons.person_outline_rounded,
+                    ),
+                    maxLength: 100,
+                    validator: (v) => (v == null || v.trim().isEmpty)
+                        ? 'Nama wajib diisi'
+                        : null,
                   ),
-                ),
-                TextFormField(
-                  controller: _bio,
-                  maxLines: 4,
-                  maxLength: 500,
-                  decoration: _decoration('Bio singkat (opsional)'),
-                ),
-              ],
+                  TextFormField(
+                    initialValue: widget.initial.email,
+                    enabled: false,
+                    decoration: _decoration(
+                      'Email (tidak dapat diubah)',
+                      icon: Icons.mail_outline_rounded,
+                    ),
+                  ),
+                  const SizedBox(height: 14),
+                  TextFormField(
+                    controller: _phone,
+                    keyboardType: TextInputType.phone,
+                    decoration: _decoration(
+                      'Nomor WhatsApp (opsional)',
+                      icon: Icons.phone_outlined,
+                    ),
+                    validator: (v) {
+                      final value = (v ?? '').trim();
+                      if (value.isEmpty) return null;
+                      return RegExp(r'^\d{8,15}$').hasMatch(value)
+                          ? null
+                          : 'Nomor harus 8–15 digit angka';
+                    },
+                  ),
+                  const SizedBox(height: 14),
+                  TextFormField(
+                    controller: _expertise,
+                    maxLength: 200,
+                    decoration: _decoration(
+                      'Keahlian (opsional)',
+                      hint: 'Pisahkan dengan koma, mis. HTML, Laravel',
+                      icon: Icons.star_outline_rounded,
+                    ),
+                  ),
+                  TextFormField(
+                    controller: _bio,
+                    maxLines: 4,
+                    maxLength: 500,
+                    decoration: _decoration('Bio singkat (opsional)'),
+                  ),
+                ],
+              ),
             ),
           ),
           if (_error != null)
             Padding(
-              padding: const EdgeInsets.only(top: 8),
+              padding: const EdgeInsets.only(bottom: 8),
               child: Text(
                 _error!,
                 style: TextStyle(fontSize: 12.5, color: Colors.red.shade700),
               ),
             ),
-          const SizedBox(height: 16),
-          SizedBox(
-            height: 48,
-            child: ElevatedButton(
-              onPressed: _saving ? null : _save,
-              style: ElevatedButton.styleFrom(
-                backgroundColor: AppColors.primary,
-                foregroundColor: Colors.white,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
-                ),
-              ),
-              child: _saving
-                  ? const SizedBox(
-                      width: 20,
-                      height: 20,
-                      child: CircularProgressIndicator(
-                        strokeWidth: 2,
-                        color: Colors.white,
-                      ),
-                    )
-                  : const Text('Simpan Profil'),
-            ),
+          InstructorPrimaryButton(
+            label: 'Simpan Profil',
+            loading: _saving,
+            onPressed: _save,
           ),
         ],
       ),
