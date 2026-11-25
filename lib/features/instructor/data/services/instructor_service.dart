@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 import 'package:sikarir/core/constants/api_constants.dart';
+import 'package:sikarir/features/instructor/data/models/attendance_session_model.dart';
 import 'package:sikarir/features/instructor/data/models/class_module_model.dart';
 import 'package:sikarir/features/training/data/models/training_class_model.dart';
 
@@ -199,6 +200,80 @@ class InstructorService {
         ...map,
       });
     }, 'Gagal menambahkan materi.');
+  }
+
+  Future<List<AttendanceSession>> getAttendanceSessions(
+    String classId,
+    String? token,
+  ) {
+    return _guard(() async {
+      final res = await client
+          .get(
+            Uri.parse(ApiConstants.sesiPresensiKelas(classId)),
+            headers: _headers(token),
+          )
+          .timeout(const Duration(seconds: 10));
+      if (res.statusCode == 404) return <AttendanceSession>[];
+      if (res.statusCode != 200) {
+        throw _error(res, 'Gagal memuat sesi presensi');
+      }
+      return _asList(_decode(res.body), const ['data', 'sesi'])
+          .whereType<Map>()
+          .map((e) => AttendanceSession.fromMap(Map<String, dynamic>.from(e)))
+          .toList();
+    }, 'Terjadi kesalahan saat memuat sesi presensi.');
+  }
+
+  Future<void> createAttendanceSession(
+    String classId,
+    AttendanceSessionInput input,
+    String? token,
+  ) {
+    return _guard(() async {
+      final res = await client
+          .post(
+            Uri.parse(ApiConstants.sesiPresensiKelas(classId)),
+            headers: _headers(token),
+            body: json.encode(input.toMap()),
+          )
+          .timeout(const Duration(seconds: 10));
+      if (res.statusCode != 200 && res.statusCode != 201) {
+        throw _error(res, 'Gagal membuat sesi presensi');
+      }
+    }, 'Gagal membuat sesi presensi.');
+  }
+
+  Future<void> setAttendanceSessionOpen(
+    String sessionId,
+    bool open,
+    String? token,
+  ) {
+    return _guard(() async {
+      final res = await client
+          .patch(
+            Uri.parse(ApiConstants.sesiPresensi(sessionId)),
+            headers: _headers(token),
+            body: json.encode({'absen_dibuka': open}),
+          )
+          .timeout(const Duration(seconds: 10));
+      if (res.statusCode != 200) {
+        throw _error(res, 'Gagal mengubah status presensi');
+      }
+    }, 'Gagal mengubah status presensi.');
+  }
+
+  Future<void> deleteAttendanceSession(String sessionId, String? token) {
+    return _guard(() async {
+      final res = await client
+          .delete(
+            Uri.parse(ApiConstants.sesiPresensi(sessionId)),
+            headers: _headers(token),
+          )
+          .timeout(const Duration(seconds: 10));
+      if (res.statusCode != 200 && res.statusCode != 204) {
+        throw _error(res, 'Gagal menghapus sesi presensi');
+      }
+    }, 'Gagal menghapus sesi presensi.');
   }
 
   Future<void> deleteMaterial(String materialId, String? token) {

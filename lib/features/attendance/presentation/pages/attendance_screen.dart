@@ -11,17 +11,19 @@ import 'package:sikarir/features/attendance/presentation/widgets/izin_sakit_shee
 import 'package:sikarir/features/attendance/presentation/widgets/location_check_sheet.dart';
 import 'package:sikarir/features/attendance/utils/attendance_formatters.dart';
 import 'package:sikarir/features/auth/presentation/providers/auth_provider.dart';
+import 'package:sikarir/features/instructor/data/models/attendance_session_model.dart';
 import 'package:sikarir/features/profile/presentation/providers/peserta_provider.dart';
 import 'package:sikarir/features/training/data/models/training_class_model.dart';
 import 'package:sikarir/features/training/presentation/providers/training_class_provider.dart';
 
 /// Target presensi untuk sebuah kelas: koordinat/radius jadwal bila ada,
 /// selain itu default BLK.
-AttendanceTarget _targetFor(TrainingClassModel c) =>
+/// Titik & radius dari sesi yang dibuka instruktur diutamakan.
+AttendanceTarget _targetFor(TrainingClassModel c, [AttendanceSession? s]) =>
     AttendanceTarget.fromSchedule(
-      latitude: c.latitude,
-      longitude: c.longitude,
-      radiusMeter: c.radiusMeter,
+      latitude: s?.latitude ?? c.latitude,
+      longitude: s?.longitude ?? c.longitude,
+      radiusMeter: s?.radiusMeter ?? c.radiusMeter,
       label: c.room == 'Workshop BLK' ? null : c.room,
     );
 
@@ -46,8 +48,20 @@ class _AttendanceScreenState extends State<AttendanceScreen>
       final token = context.read<AuthProvider>().user?.token;
       context.read<AttendanceProvider>().fetchAttendanceData(token);
       context.read<PesertaProvider>().fetchProfile(token);
-      context.read<TrainingClassProvider>().fetchClasses(token);
+      _loadClassesAndSessions(token);
     });
+  }
+
+  /// Muat kelas, lalu periksa sesi presensi yang dibuka instruktur per kelas.
+  Future<void> _loadClassesAndSessions(String? token) async {
+    final classProvider = context.read<TrainingClassProvider>();
+    final attendance = context.read<AttendanceProvider>();
+    await classProvider.fetchClasses(token);
+    if (!mounted) return;
+    await attendance.fetchOpenSessions(
+      _activeClasses(classProvider).map((c) => c.id),
+      token,
+    );
   }
 
   @override
@@ -79,7 +93,7 @@ class _AttendanceScreenState extends State<AttendanceScreen>
     final token = _token;
     await Future.wait([
       context.read<AttendanceProvider>().fetchAttendanceData(token),
-      context.read<TrainingClassProvider>().fetchClasses(token),
+      _loadClassesAndSessions(token),
     ]);
   }
 
@@ -97,6 +111,7 @@ class _AttendanceScreenState extends State<AttendanceScreen>
     final provider = ctx.read<AttendanceProvider>();
     final token = _token;
     final pesertaId = _resolvePesertaId();
+    final session = provider.openSessionFor(kelas.id);
 
     await showModalBottomSheet(
       context: ctx,
@@ -109,7 +124,8 @@ class _AttendanceScreenState extends State<AttendanceScreen>
         token: token,
         pesertaId: pesertaId,
         jadwalId: kelas.jadwalId,
-        target: _targetFor(kelas),
+        sessionId: session?.id,
+        target: _targetFor(kelas, session),
       ),
     );
     if (mounted) provider.fetchAttendanceData(token);
@@ -218,8 +234,9 @@ class _AttendanceScreenState extends State<AttendanceScreen>
         final today = kelas != null
             ? provider.todayRecordFor(kelas.jadwalId)
             : provider.todayAttendance;
-        final target =
-            kelas != null ? _targetFor(kelas) : AttendanceTarget.defaultTarget;
+        final target = kelas != null
+            ? _targetFor(kelas, provider.openSessionFor(kelas.id))
+            : AttendanceTarget.defaultTarget;
         // Status hari ini belum diketahui (loading / gagal) → jangan izinkan absen.
         final todayUnknown = !provider.todayLoaded;
 
@@ -344,8 +361,23 @@ class _AttendanceScreenState extends State<AttendanceScreen>
         ),
       ];
     }
-    return [
-      ElevatedButton.icon(
+    // Presensi masuk dikontrol instruktur: hanya saat sesi dibuka.
+    final session = provider.openSessionFor(kelas.id);
+    final Widget masuk;
+    if (!provider.sessionChecked(kelas.id)) {
+      masuk = const AttendanceInfoNote(
+        icon: Icons.cloud_off_rounded,
+        text: 'Status sesi presensi belum dapat diperiksa. '
+            'Tarik layar ke bawah untuk mencoba lagi.',
+      );
+    } else if (session == null) {
+      masuk = const AttendanceInfoNote(
+        icon: Icons.lock_clock_rounded,
+        text: 'Presensi belum dibuka oleh instruktur. '
+            'Anda dapat melakukan presensi saat sesi dibuka.',
+      );
+    } else {
+      masuk = ElevatedButton.icon(
         onPressed: () => _handlePresensiHadir(context, kelas),
         icon: const Icon(Icons.fingerprint_rounded, size: 22),
         label: const Text('Presensi Masuk',
@@ -357,7 +389,10 @@ class _AttendanceScreenState extends State<AttendanceScreen>
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
           elevation: 0,
         ),
-      ),
+      );
+    }
+    return [
+      masuk,
       const SizedBox(height: 10),
       Row(
         children: [

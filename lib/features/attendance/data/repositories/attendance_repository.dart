@@ -1,5 +1,6 @@
 import 'package:sikarir/features/attendance/data/models/attendance_model.dart';
 import 'package:sikarir/features/attendance/data/services/attendance_service.dart';
+import 'package:sikarir/features/instructor/data/models/attendance_session_model.dart';
 
 class AttendanceRepository {
   final AttendanceService service;
@@ -13,6 +14,10 @@ class AttendanceRepository {
 
   Future<AttendanceItem?> getTodayAttendance([String? token]) {
     return service.getTodayAttendance(token);
+  }
+
+  Future<AttendanceSession?> getOpenSession(String classId, [String? token]) {
+    return service.getOpenSession(classId, token);
   }
 
   Future<AttendanceRekap?> getAttendanceSummaryReport([String? token]) {

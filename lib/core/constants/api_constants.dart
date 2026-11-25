@@ -61,4 +61,12 @@ class ApiConstants {
   static String modul(String modulId) => '$baseUrl/modul/$modulId';
   static String materiModul(String modulId) => '$baseUrl/modul/$modulId/materi';
   static String materi(String materiId) => '$baseUrl/materi/$materiId';
+
+  /// Instruktur: sesi presensi per pertemuan (dibuat & dibuka/ditutup instruktur).
+  static String sesiPresensiKelas(String kelasId) =>
+      '$baseUrl/kelas-pelatihan/$kelasId/sesi-presensi';
+  /// Peserta: sesi presensi yang sedang dibuka untuk sebuah kelas.
+  static String sesiPresensiAktif(String kelasId) =>
+      '$baseUrl/kelas-pelatihan/$kelasId/sesi-presensi/aktif';
+  static String sesiPresensi(String sesiId) => '$baseUrl/sesi-presensi/$sesiId';
 }

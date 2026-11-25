@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import 'package:sikarir/core/constants/app_theme.dart';
 import 'package:sikarir/features/auth/presentation/providers/auth_provider.dart';
 import 'package:sikarir/features/instructor/data/models/class_module_model.dart';
+import 'package:sikarir/features/instructor/presentation/pages/instructor_attendance_screen.dart';
 import 'package:sikarir/features/instructor/presentation/providers/instructor_provider.dart';
 import 'package:sikarir/features/instructor/presentation/widgets/meeting_module_list.dart';
 import 'package:sikarir/features/instructor/presentation/widgets/module_form_sheets.dart';
@@ -177,6 +178,19 @@ class _InstructorClassDetailScreenState
             color: AppColors.textPrimary,
           ),
         ),
+        actions: [
+          IconButton(
+            tooltip: 'Kelola Presensi',
+            icon: const Icon(Icons.how_to_reg_rounded),
+            onPressed: () => Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (_) =>
+                    InstructorAttendanceScreen(trainingClass: item),
+              ),
+            ),
+          ),
+        ],
       ),
       floatingActionButton: FloatingActionButton.extended(
         onPressed: provider.isSaving ? null : () => _addModule(1),
