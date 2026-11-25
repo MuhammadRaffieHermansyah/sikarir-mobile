@@ -5,6 +5,7 @@ import 'package:sikarir/features/auth/presentation/providers/auth_provider.dart'
 import 'package:sikarir/features/instructor/data/models/class_module_model.dart';
 import 'package:sikarir/features/instructor/presentation/pages/instructor_attendance_screen.dart';
 import 'package:sikarir/features/instructor/presentation/providers/instructor_provider.dart';
+import 'package:sikarir/features/instructor/presentation/widgets/instructor_ui.dart';
 import 'package:sikarir/features/instructor/presentation/widgets/meeting_module_list.dart';
 import 'package:sikarir/features/instructor/presentation/widgets/module_form_sheets.dart';
 import 'package:sikarir/features/training/data/models/training_class_model.dart';
@@ -169,24 +170,17 @@ class _InstructorClassDetailScreenState
 
     return Scaffold(
       backgroundColor: AppColors.background,
-      appBar: AppBar(
-        title: Text(
-          item.title,
-          style: const TextStyle(
-            fontSize: 16,
-            fontWeight: FontWeight.w800,
-            color: AppColors.textPrimary,
-          ),
-        ),
+      appBar: InstructorAppBar(
+        title: item.title,
+        subtitle: '${item.code} • ${item.category}',
         actions: [
-          IconButton(
+          InstructorAppBarAction(
             tooltip: 'Kelola Presensi',
-            icon: const Icon(Icons.how_to_reg_rounded),
+            icon: Icons.how_to_reg_rounded,
             onPressed: () => Navigator.push(
               context,
               MaterialPageRoute(
-                builder: (_) =>
-                    InstructorAttendanceScreen(trainingClass: item),
+                builder: (_) => InstructorAttendanceScreen(trainingClass: item),
               ),
             ),
           ),
@@ -196,6 +190,8 @@ class _InstructorClassDetailScreenState
         onPressed: provider.isSaving ? null : () => _addModule(1),
         backgroundColor: AppColors.primary,
         foregroundColor: Colors.white,
+        elevation: 2,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         icon: const Icon(Icons.add_rounded),
         label: const Text('Tambah Modul'),
       ),
@@ -212,19 +208,33 @@ class _InstructorClassDetailScreenState
                     child: ListView(
                       padding: const EdgeInsets.fromLTRB(16, 16, 16, 96),
                       children: [
-                        Text(
-                          '${item.code} • ${item.category}',
-                          style: const TextStyle(
-                            fontSize: 12,
-                            color: AppColors.textSecondary,
+                        Container(
+                          padding: const EdgeInsets.all(14),
+                          decoration: BoxDecoration(
+                            color: AppColors.mintBg,
+                            borderRadius: BorderRadius.circular(14),
+                            border: Border.all(color: AppColors.cardBorder),
                           ),
-                        ),
-                        const SizedBox(height: 4),
-                        const Text(
-                          'Modul & materi tiap pertemuan dapat diakses peserta kapan saja.',
-                          style: TextStyle(
-                            fontSize: 12.5,
-                            color: AppColors.textSecondary,
+                          child: const Row(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Icon(
+                                Icons.info_outline_rounded,
+                                size: 18,
+                                color: AppColors.mintDark,
+                              ),
+                              SizedBox(width: 10),
+                              Expanded(
+                                child: Text(
+                                  'Modul & materi tiap pertemuan dapat diakses peserta kapan saja.',
+                                  style: TextStyle(
+                                    fontSize: 12.5,
+                                    height: 1.4,
+                                    color: AppColors.mintDark,
+                                  ),
+                                ),
+                              ),
+                            ],
                           ),
                         ),
                         const SizedBox(height: 14),

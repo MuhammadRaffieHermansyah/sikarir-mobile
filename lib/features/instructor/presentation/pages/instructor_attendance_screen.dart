@@ -5,6 +5,7 @@ import 'package:sikarir/features/auth/presentation/providers/auth_provider.dart'
 import 'package:sikarir/features/instructor/data/models/attendance_session_model.dart';
 import 'package:sikarir/features/instructor/presentation/providers/instructor_provider.dart';
 import 'package:sikarir/features/instructor/presentation/widgets/attendance_session_form_sheet.dart';
+import 'package:sikarir/features/instructor/presentation/widgets/instructor_ui.dart';
 import 'package:sikarir/features/training/data/models/training_class_model.dart';
 
 /// Kelola sesi presensi sebuah kelas: buat, buka/tutup, dan hapus.
@@ -136,33 +137,18 @@ class _InstructorAttendanceScreenState
         child: CircularProgressIndicator(color: AppColors.primary),
       );
     } else if (error != null && sessions.isEmpty) {
-      body = ListView(
-        children: [
-          const SizedBox(height: 120),
-          const Icon(Icons.cloud_off_rounded, size: 40, color: Colors.red),
-          Padding(
-            padding: const EdgeInsets.all(16),
-            child: Text(error, textAlign: TextAlign.center),
-          ),
-          Center(
-            child: TextButton(onPressed: _load, child: const Text('Coba lagi')),
-          ),
-        ],
+      body = InstructorMessage(
+        icon: Icons.cloud_off_rounded,
+        title: 'Gagal Memuat Sesi',
+        message: error,
+        onRetry: _load,
+        error: true,
       );
     } else if (sessions.isEmpty) {
-      body = ListView(
-        children: const [
-          SizedBox(height: 120),
-          Icon(Icons.how_to_reg_outlined, size: 48, color: AppColors.textMuted),
-          Padding(
-            padding: EdgeInsets.all(16),
-            child: Text(
-              'Belum ada sesi presensi. Buat sesi agar peserta dapat melakukan presensi.',
-              textAlign: TextAlign.center,
-              style: TextStyle(fontSize: 12.5, color: AppColors.textSecondary),
-            ),
-          ),
-        ],
+      body = const InstructorMessage(
+        icon: Icons.how_to_reg_outlined,
+        title: 'Belum Ada Sesi Presensi',
+        message: 'Buat sesi agar peserta dapat melakukan presensi pada pertemuan kelas.',
       );
     } else {
       body = ListView.builder(
@@ -179,20 +165,16 @@ class _InstructorAttendanceScreenState
 
     return Scaffold(
       backgroundColor: AppColors.background,
-      appBar: AppBar(
-        title: Text(
-          'Presensi • ${widget.trainingClass.title}',
-          style: const TextStyle(
-            fontSize: 16,
-            fontWeight: FontWeight.w800,
-            color: AppColors.textPrimary,
-          ),
-        ),
+      appBar: InstructorAppBar(
+        title: 'Kelola Presensi',
+        subtitle: widget.trainingClass.title,
       ),
       floatingActionButton: FloatingActionButton.extended(
         onPressed: provider.isSaving ? null : _create,
         backgroundColor: AppColors.primary,
         foregroundColor: Colors.white,
+        elevation: 2,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         icon: const Icon(Icons.add_rounded),
         label: const Text('Buat Sesi'),
       ),
@@ -200,7 +182,11 @@ class _InstructorAttendanceScreenState
         children: [
           if (provider.isSaving) const LinearProgressIndicator(minHeight: 3),
           Expanded(
-            child: RefreshIndicator(onRefresh: _load, child: body),
+            child: RefreshIndicator(
+              onRefresh: _load,
+              color: AppColors.primary,
+              child: body,
+            ),
           ),
         ],
       ),
@@ -224,20 +210,50 @@ class _SessionCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final open = session.isOpen;
-    final color = open ? Colors.green.shade700 : AppColors.textSecondary;
-    return Container(
-      margin: const EdgeInsets.only(bottom: 12),
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: AppColors.cardBorder),
+    Widget info(IconData icon, String text) => Padding(
+      padding: const EdgeInsets.only(top: 6),
+      child: Row(
+        children: [
+          Icon(icon, size: 15, color: AppColors.textSecondary),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Text(
+              text,
+              style: const TextStyle(
+                fontSize: 12.5,
+                color: AppColors.textSecondary,
+              ),
+            ),
+          ),
+        ],
       ),
+    );
+
+    return InstructorCard(
+      margin: const EdgeInsets.only(bottom: 12),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
             children: [
+              Container(
+                width: 40,
+                height: 40,
+                alignment: Alignment.center,
+                decoration: BoxDecoration(
+                  color: AppColors.mintBg,
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Text(
+                  '${session.meetingNumber}',
+                  style: const TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w800,
+                    color: AppColors.primary,
+                  ),
+                ),
+              ),
+              const SizedBox(width: 12),
               Expanded(
                 child: Text(
                   'Pertemuan ${session.meetingNumber}',
@@ -248,34 +264,24 @@ class _SessionCard extends StatelessWidget {
                   ),
                 ),
               ),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                decoration: BoxDecoration(
-                  color: color.withValues(alpha: 0.12),
-                  borderRadius: BorderRadius.circular(20),
-                ),
-                child: Text(
-                  open ? 'Dibuka' : 'Ditutup',
-                  style: TextStyle(
-                    fontSize: 11.5,
-                    fontWeight: FontWeight.w800,
-                    color: color,
-                  ),
-                ),
+              InstructorChip(
+                label: open ? 'Dibuka' : 'Ditutup',
+                background: open ? AppColors.mint : AppColors.blueGray,
+                foreground: open ? AppColors.mintDark : AppColors.blueGrayText,
+                icon: open
+                    ? Icons.lock_open_rounded
+                    : Icons.lock_outline_rounded,
               ),
             ],
           ),
-          const SizedBox(height: 6),
-          Text(
-            '${session.date} • ${session.startTime}–${session.endTime} • radius ${session.radiusMeter} m',
-            style: const TextStyle(fontSize: 12, color: AppColors.textSecondary),
+          const SizedBox(height: 8),
+          info(Icons.event_rounded, session.date),
+          info(
+            Icons.schedule_rounded,
+            '${session.startTime}–${session.endTime}  •  radius ${session.radiusMeter} m',
           ),
-          const SizedBox(height: 2),
-          Text(
-            '${session.presentCount} peserta hadir',
-            style: const TextStyle(fontSize: 12, color: AppColors.textSecondary),
-          ),
-          const SizedBox(height: 10),
+          info(Icons.groups_rounded, '${session.presentCount} peserta hadir'),
+          const SizedBox(height: 14),
           Row(
             children: [
               Expanded(
@@ -285,18 +291,36 @@ class _SessionCard extends StatelessWidget {
                     open ? Icons.lock_outline_rounded : Icons.lock_open_rounded,
                     size: 18,
                   ),
-                  label: Text(open ? 'Tutup Presensi' : 'Buka Presensi'),
+                  label: Text(
+                    open ? 'Tutup Presensi' : 'Buka Presensi',
+                    style: const TextStyle(fontWeight: FontWeight.w800),
+                  ),
                   style: ElevatedButton.styleFrom(
                     backgroundColor: open
-                        ? Colors.orange.shade700
+                        ? AppColors.orange
                         : AppColors.primary,
                     foregroundColor: Colors.white,
+                    elevation: 0,
+                    padding: const EdgeInsets.symmetric(vertical: 12),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
                   ),
                 ),
               ),
+              const SizedBox(width: 8),
               IconButton(
                 onPressed: busy ? null : onDelete,
-                icon: Icon(Icons.delete_outline_rounded, color: Colors.red.shade700),
+                style: IconButton.styleFrom(
+                  backgroundColor: Colors.red.shade50,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                ),
+                icon: Icon(
+                  Icons.delete_outline_rounded,
+                  color: Colors.red.shade700,
+                ),
                 tooltip: 'Hapus sesi',
               ),
             ],

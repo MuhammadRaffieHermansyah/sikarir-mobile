@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:sikarir/core/constants/app_theme.dart';
 import 'package:sikarir/features/auth/presentation/providers/auth_provider.dart';
+import 'package:sikarir/features/instructor/presentation/widgets/instructor_ui.dart';
 import 'package:sikarir/features/profile/data/services/account_service.dart';
 
 /// Ganti password untuk semua role (`PUT /profile/password`).
@@ -63,14 +64,12 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
   }
 
   InputDecoration _decoration(String label, bool hidden, VoidCallback toggle) =>
-      InputDecoration(
-        labelText: label,
-        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-        suffixIcon: IconButton(
+      instructorInputDecoration(
+        label,
+        icon: Icons.lock_outline_rounded,
+        suffix: IconButton(
           icon: Icon(
-            hidden
-                ? Icons.visibility_off_outlined
-                : Icons.visibility_outlined,
+            hidden ? Icons.visibility_off_outlined : Icons.visibility_outlined,
           ),
           onPressed: toggle,
         ),
@@ -80,19 +79,43 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppColors.background,
-      appBar: AppBar(
-        title: const Text(
-          'Ganti Password',
-          style: TextStyle(
-            fontSize: 18,
-            fontWeight: FontWeight.w800,
-            color: AppColors.textPrimary,
-          ),
-        ),
+      appBar: const InstructorAppBar(
+        title: 'Ganti Password',
+        subtitle: 'Perbarui password akun Anda',
       ),
       body: ListView(
         padding: const EdgeInsets.all(16),
         children: [
+          Container(
+            margin: const EdgeInsets.only(bottom: 14),
+            padding: const EdgeInsets.all(14),
+            decoration: BoxDecoration(
+              color: AppColors.mintBg,
+              borderRadius: BorderRadius.circular(14),
+              border: Border.all(color: AppColors.cardBorder),
+            ),
+            child: const Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Icon(
+                  Icons.shield_outlined,
+                  size: 18,
+                  color: AppColors.mintDark,
+                ),
+                SizedBox(width: 10),
+                Expanded(
+                  child: Text(
+                    'Gunakan password minimal 8 karakter dan berbeda dari password lama.',
+                    style: TextStyle(
+                      fontSize: 12.5,
+                      height: 1.4,
+                      color: AppColors.mintDark,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
           Form(
             key: _formKey,
             child: Column(
@@ -152,28 +175,10 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
               ),
             ),
           const SizedBox(height: 20),
-          SizedBox(
-            height: 48,
-            child: ElevatedButton(
-              onPressed: _saving ? null : _submit,
-              style: ElevatedButton.styleFrom(
-                backgroundColor: AppColors.primary,
-                foregroundColor: Colors.white,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
-                ),
-              ),
-              child: _saving
-                  ? const SizedBox(
-                      width: 20,
-                      height: 20,
-                      child: CircularProgressIndicator(
-                        strokeWidth: 2,
-                        color: Colors.white,
-                      ),
-                    )
-                  : const Text('Simpan Password'),
-            ),
+          InstructorPrimaryButton(
+            label: 'Simpan Password',
+            loading: _saving,
+            onPressed: _submit,
           ),
         ],
       ),

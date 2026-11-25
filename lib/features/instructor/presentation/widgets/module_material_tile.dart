@@ -26,7 +26,7 @@ Future<void> openModuleMaterial(
       context: context,
       isScrollControlled: true,
       shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
       ),
       builder: (_) => DraggableScrollableSheet(
         expand: false,
@@ -92,47 +92,56 @@ class ModuleMaterialTile extends StatelessWidget {
       MaterialKind.text => 'Catatan',
     };
 
-    return ListTile(
-      dense: true,
-      contentPadding: EdgeInsets.zero,
-      onTap: () => openModuleMaterial(context, material),
-      leading: Container(
-        padding: const EdgeInsets.all(8),
-        decoration: BoxDecoration(
-          color: AppColors.mintBg,
-          borderRadius: BorderRadius.circular(10),
+    return Container(
+      margin: const EdgeInsets.only(top: 8),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: AppColors.cardBorder),
+      ),
+      child: ListTile(
+        dense: true,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        contentPadding: const EdgeInsets.only(left: 10, right: 4),
+        onTap: () => openModuleMaterial(context, material),
+        leading: Container(
+          padding: const EdgeInsets.all(8),
+          decoration: BoxDecoration(
+            color: AppColors.mintBg,
+            borderRadius: BorderRadius.circular(10),
+          ),
+          child: Icon(
+            materialKindIcon(material.kind),
+            size: 20,
+            color: AppColors.mintDark,
+          ),
         ),
-        child: Icon(
-          materialKindIcon(material.kind),
-          size: 20,
-          color: AppColors.mintDark,
+        title: Text(
+          material.title,
+          style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700),
         ),
-      ),
-      title: Text(
-        material.title,
-        style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700),
-      ),
-      subtitle: Text(
-        subtitle,
-        maxLines: 1,
-        overflow: TextOverflow.ellipsis,
-        style: const TextStyle(fontSize: 11, color: AppColors.textSecondary),
-      ),
-      trailing: onDelete == null
-          ? const Icon(
-              Icons.open_in_new_rounded,
-              size: 18,
-              color: AppColors.primary,
-            )
-          : IconButton(
-              icon: Icon(
-                Icons.delete_outline_rounded,
-                size: 20,
-                color: Colors.red.shade700,
+        subtitle: Text(
+          subtitle,
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+          style: const TextStyle(fontSize: 11, color: AppColors.textSecondary),
+        ),
+        trailing: onDelete == null
+            ? const Icon(
+                Icons.open_in_new_rounded,
+                size: 18,
+                color: AppColors.primary,
+              )
+            : IconButton(
+                icon: Icon(
+                  Icons.delete_outline_rounded,
+                  size: 20,
+                  color: Colors.red.shade700,
+                ),
+                tooltip: 'Hapus materi',
+                onPressed: onDelete,
               ),
-              tooltip: 'Hapus materi',
-              onPressed: onDelete,
-            ),
+      ),
     );
   }
 }
