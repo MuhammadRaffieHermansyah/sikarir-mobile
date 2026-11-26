@@ -215,13 +215,10 @@ class InstructorProvider extends ChangeNotifier {
     () => service.setAttendanceSessionOpen(sessionId, open, token),
   );
 
-  Future<void> deleteSession(
-    String classId,
-    String sessionId,
-    String? token,
-  ) => _mutateSessions(
-    classId,
-    token,
-    () => service.deleteAttendanceSession(sessionId, token),
-  );
+  Future<void> deleteSession(String classId, String sessionId, String? token) =>
+      _mutateSessions(
+        classId,
+        token,
+        () => service.deleteAttendanceSession(sessionId, token),
+      );
 }
