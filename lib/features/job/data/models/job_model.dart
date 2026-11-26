@@ -14,6 +14,9 @@ class JobVacancyModel {
   final String description;
   final bool isBookmarked;
 
+  /// Nomor telepon/WhatsApp perusahaan dari data mitra (kosong jika belum ada).
+  final String contactPhone;
+
   JobVacancyModel({
     required this.id,
     required this.title,
@@ -27,6 +30,7 @@ class JobVacancyModel {
     this.badges = const [],
     required this.description,
     this.isBookmarked = false,
+    this.contactPhone = '',
   });
 
   factory JobVacancyModel.fromMap(Map<String, dynamic> map) {
@@ -99,6 +103,7 @@ class JobVacancyModel {
       badges: bList,
       description: (map['deskripsi'] ?? map['description'] ?? 'Peluang karir eksklusif bagi alumni dan peserta pelatihan BLK Connect.').toString(),
       isBookmarked: map['is_bookmarked'] ?? false,
+      contactPhone: (mitra is Map ? (mitra['no_telp'] ?? mitra['telepon'] ?? '') : (map['no_telp'] ?? '')).toString(),
     );
   }
 
@@ -132,6 +137,7 @@ class JobVacancyModel {
       badges: badges,
       description: description,
       isBookmarked: isBookmarked ?? this.isBookmarked,
+      contactPhone: contactPhone,
     );
   }
 }

@@ -27,13 +27,4 @@ class JobRepository {
       return JobFetchResult(jobs: service.getFallbackJobs(), isOffline: true);
     }
   }
-
-  /// Returns a Map with keys: success (bool), message (String), need_profile_completion (bool)
-  Future<Map<String, dynamic>> applyJob(String jobId, [String? token]) async {
-    return await service.applyJob(jobId, token);
-  }
-
-  Future<List<Map<String, dynamic>>> getMyApplications([String? token]) async {
-    return await service.getMyApplications(token);
-  }
 }

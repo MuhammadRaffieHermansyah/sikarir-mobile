@@ -8,16 +8,13 @@ class JobProvider extends ChangeNotifier {
   JobProvider({JobRepository? repository}) : repository = repository ?? JobRepository();
 
   bool _isLoading = false;
-  bool _isApplying = false;
   bool _isOffline = false;
   List<JobVacancyModel> _jobs = [];
-  List<Map<String, dynamic>> _myApplications = [];
   String _searchQuery = '';
   String _selectedCategory = 'Semua Jurusan';
   String? _errorMessage;
 
   bool get isLoading => _isLoading;
-  bool get isApplying => _isApplying;
 
   /// True jika data berasal dari fallback lokal (API tidak tersedia)
   bool get isOffline => _isOffline;
@@ -55,7 +52,6 @@ class JobProvider extends ChangeNotifier {
   }
 
   List<JobVacancyModel> get allJobs => _jobs;
-  List<Map<String, dynamic>> get myApplications => _myApplications;
   String get searchQuery => _searchQuery;
   String get selectedCategory => _selectedCategory;
   String? get errorMessage => _errorMessage;
@@ -74,19 +70,6 @@ class JobProvider extends ChangeNotifier {
     final idx = _jobs.indexWhere((j) => j.id == id);
     if (idx != -1) {
       _jobs[idx] = _jobs[idx].copyWith(isBookmarked: !_jobs[idx].isBookmarked);
-      notifyListeners();
-    }
-  }
-
-  /// Returns true on success, throws on handled error
-  Future<Map<String, dynamic>> applyJob(String jobId, [String? token]) async {
-    _isApplying = true;
-    notifyListeners();
-    try {
-      final result = await repository.applyJob(jobId, token);
-      return result;
-    } finally {
-      _isApplying = false;
       notifyListeners();
     }
   }
@@ -111,15 +94,6 @@ class JobProvider extends ChangeNotifier {
     } finally {
       _isLoading = false;
       notifyListeners();
-    }
-  }
-
-  Future<void> fetchMyApplications([String? token]) async {
-    try {
-      _myApplications = await repository.getMyApplications(token);
-      notifyListeners();
-    } catch (e) {
-      if (kDebugMode) debugPrint('fetchMyApplications error: $e');
     }
   }
 }

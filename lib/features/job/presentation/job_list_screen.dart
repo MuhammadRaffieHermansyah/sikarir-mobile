@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:url_launcher/url_launcher.dart';
 import 'package:sikarir/core/constants/app_theme.dart';
 import 'package:sikarir/core/widgets/blk_header.dart';
 import 'package:sikarir/features/auth/presentation/providers/auth_provider.dart';
@@ -11,11 +12,15 @@ class JobListScreen extends StatefulWidget {
   final VoidCallback? onProfileTap;
   final VoidCallback? onNavigateToCertificate;
 
+  /// Pembuka tautan WhatsApp perusahaan. Bisa diganti saat pengujian.
+  final Future<bool> Function(Uri uri)? openUrl;
+
   const JobListScreen({
     super.key,
     this.onNotificationTap,
     this.onProfileTap,
     this.onNavigateToCertificate,
+    this.openUrl,
   });
 
   @override
@@ -51,70 +56,147 @@ class _JobListScreenState extends State<JobListScreen> {
     super.dispose();
   }
 
-  Future<void> _applyJob(JobVacancyModel job) async {
-    final confirmed = await showDialog<bool>(
+  /// Nomor telepon Indonesia → format wa.me (0812… → 62812…).
+  static String _whatsappNumber(String phone) {
+    final digits = phone.replaceAll(RegExp(r'\D'), '');
+    return digits.startsWith('0') ? '62${digits.substring(1)}' : digits;
+  }
+
+  Future<void> _contactCompany(JobVacancyModel job) async {
+    final messenger = ScaffoldMessenger.of(context);
+    final uri = Uri.parse('https://wa.me/${_whatsappNumber(job.contactPhone)}');
+    var opened = false;
+    try {
+      opened = await (widget.openUrl ?? _openExternally)(uri);
+    } catch (_) {
+      opened = false;
+    }
+    if (!opened && mounted) {
+      messenger.showSnackBar(
+        SnackBar(content: Text('WhatsApp tidak dapat dibuka. Hubungi ${job.contactPhone}.')),
+      );
+    }
+  }
+
+  static Future<bool> _openExternally(Uri uri) =>
+      launchUrl(uri, mode: LaunchMode.externalApplication);
+
+  /// Lowongan hanya informasi: tampilkan detail dan kontak perusahaan, tanpa proses lamaran.
+  void _showJobDetail(JobVacancyModel job) {
+    showModalBottomSheet<void>(
       context: context,
-      builder: (ctx) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: const Text(
-          'Lamar Posisi',
-          style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
-        ),
-        content: Text(
-          'Kirim berkas portofolio & sertifikat BLK Anda ke ${job.companyName} untuk posisi ${job.title}?',
-          style: const TextStyle(fontSize: 14, color: AppColors.textSecondary),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx, false),
-            child: const Text('Batal', style: TextStyle(color: AppColors.textSecondary)),
-          ),
-          ElevatedButton(
-            onPressed: () => Navigator.pop(ctx, true),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: AppColors.primary,
-              foregroundColor: Colors.white,
+      isScrollControlled: true,
+      backgroundColor: Colors.white,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (ctx) => DraggableScrollableSheet(
+        expand: false,
+        initialChildSize: 0.75,
+        maxChildSize: 0.92,
+        builder: (ctx, scrollController) => ListView(
+          controller: scrollController,
+          padding: EdgeInsets.fromLTRB(20, 12, 20, MediaQuery.of(ctx).viewPadding.bottom + 24),
+          children: [
+            Center(
+              child: Container(
+                width: 40,
+                height: 4,
+                decoration: BoxDecoration(
+                  color: AppColors.cardBorder,
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
             ),
-            child: const Text('Kirim Lamaran'),
+            const SizedBox(height: 16),
+            Text(
+              job.title,
+              style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w800, color: AppColors.textPrimary),
+            ),
+            const SizedBox(height: 4),
+            Text(
+              job.companyName,
+              style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: AppColors.textSecondary),
+            ),
+            const SizedBox(height: 16),
+            _detailRow(Icons.location_on_outlined, 'Lokasi', job.location),
+            _detailRow(Icons.work_outline, 'Tipe', job.type),
+            _detailRow(Icons.payments_outlined, 'Gaji', job.salary),
+            _detailRow(Icons.calendar_month_outlined, 'Batas', job.deadline),
+            const SizedBox(height: 12),
+            const Text(
+              'Kualifikasi',
+              style: TextStyle(fontSize: 13, fontWeight: FontWeight.w800, color: AppColors.textPrimary),
+            ),
+            const SizedBox(height: 4),
+            Text(job.qualification, style: const TextStyle(fontSize: 13, color: AppColors.textPrimary, height: 1.4)),
+            const SizedBox(height: 12),
+            const Text(
+              'Deskripsi',
+              style: TextStyle(fontSize: 13, fontWeight: FontWeight.w800, color: AppColors.textPrimary),
+            ),
+            const SizedBox(height: 4),
+            Text(job.description, style: const TextStyle(fontSize: 13, color: AppColors.textPrimary, height: 1.4)),
+            const SizedBox(height: 16),
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: AppColors.mintBg,
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: const Text(
+                'Lowongan ini bersifat informasi. Hubungi perusahaan langsung melalui kontak di bawah.',
+                style: TextStyle(fontSize: 12, color: AppColors.mintDark, height: 1.4),
+              ),
+            ),
+            const SizedBox(height: 12),
+            if (job.contactPhone.isNotEmpty)
+              SizedBox(
+                height: 46,
+                child: ElevatedButton.icon(
+                  onPressed: () => _contactCompany(job),
+                  icon: const Icon(Icons.phone_outlined, size: 18),
+                  label: Text('Hubungi ${job.contactPhone}'),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppColors.primary,
+                    foregroundColor: Colors.white,
+                    elevation: 0,
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                  ),
+                ),
+              )
+            else
+              const Text(
+                'Kontak perusahaan belum dicantumkan.',
+                style: TextStyle(fontSize: 12, color: AppColors.textSecondary),
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _detailRow(IconData icon, String label, String value) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 8),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(icon, size: 16, color: AppColors.textSecondary),
+          const SizedBox(width: 8),
+          SizedBox(
+            width: 56,
+            child: Text(label, style: const TextStyle(fontSize: 12, color: AppColors.textSecondary)),
+          ),
+          Expanded(
+            child: Text(
+              value,
+              style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: AppColors.textPrimary),
+            ),
           ),
         ],
       ),
     );
-
-    if (confirmed != true || !mounted) return;
-
-    final token = context.read<AuthProvider>().user?.token;
-    final result = await context.read<JobProvider>().applyJob(job.id, token);
-
-    if (!mounted) return;
-
-    if (result['need_profile_completion'] == true) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: const Text('Lengkapi data diri terlebih dahulu sebelum melamar.'),
-          backgroundColor: AppColors.peachText,
-          action: SnackBarAction(
-            label: 'Lengkapi',
-            textColor: Colors.white,
-            onPressed: () => Navigator.pushNamed(context, '/complete-profile'),
-          ),
-        ),
-      );
-    } else if (result['success'] == true) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Lamaran untuk ${job.title} berhasil diajukan!'),
-          backgroundColor: AppColors.primary,
-        ),
-      );
-    } else {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(result['message']?.toString() ?? 'Gagal mengajukan lamaran.'),
-          backgroundColor: Colors.red.shade600,
-        ),
-      );
-    }
   }
 
   @override
@@ -683,7 +765,7 @@ class _JobListScreenState extends State<JobListScreen> {
               SizedBox(
                 height: 36,
                 child: ElevatedButton(
-                  onPressed: context.read<JobProvider>().isApplying ? null : () => _applyJob(job),
+                  onPressed: () => _showJobDetail(job),
                   style: ElevatedButton.styleFrom(
                     backgroundColor: AppColors.primary,
                     foregroundColor: Colors.white,
@@ -693,25 +775,19 @@ class _JobListScreenState extends State<JobListScreen> {
                       borderRadius: BorderRadius.circular(8),
                     ),
                   ),
-                  child: context.watch<JobProvider>().isApplying
-                      ? const SizedBox(
-                          width: 14,
-                          height: 14,
-                          child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
-                        )
-                      : const Row(
-                          children: [
-                            Text(
-                              'Detail & Lamar',
-                              style: TextStyle(
-                                fontSize: 11,
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                            SizedBox(width: 4),
-                            Icon(Icons.arrow_forward, size: 13),
-                          ],
+                  child: const Row(
+                    children: [
+                      Text(
+                        'Lihat Detail',
+                        style: TextStyle(
+                          fontSize: 11,
+                          fontWeight: FontWeight.bold,
                         ),
+                      ),
+                      SizedBox(width: 4),
+                      Icon(Icons.arrow_forward, size: 13),
+                    ],
+                  ),
                 ),
               ),
             ],
