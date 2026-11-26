@@ -220,41 +220,4 @@ class AttendanceProvider extends ChangeNotifier {
       notifyListeners();
     }
   }
-
-  /// Presensi pulang untuk catatan [absenId]; memperbarui catatan di state.
-  Future<AttendanceItem> clockOut({
-    required String absenId,
-    required double latitude,
-    required double longitude,
-    String? token,
-  }) async {
-    if (_isSubmitting) {
-      throw const AttendanceException(
-        'Presensi sedang diproses. Mohon tunggu.',
-        AttendanceErrorType.validation,
-      );
-    }
-    _isSubmitting = true;
-    notifyListeners();
-
-    try {
-      final updated = await repository.clockOut(
-        absenId: absenId,
-        latitude: latitude,
-        longitude: longitude,
-        token: token,
-      );
-      _attendanceList = [
-        for (final item in _attendanceList)
-          item.id == absenId ? item.copyWithClockOut(updated) : item,
-      ];
-      if (_todayAttendance?.id == absenId) {
-        _todayAttendance = _todayAttendance!.copyWithClockOut(updated);
-      }
-      return updated;
-    } finally {
-      _isSubmitting = false;
-      notifyListeners();
-    }
-  }
 }

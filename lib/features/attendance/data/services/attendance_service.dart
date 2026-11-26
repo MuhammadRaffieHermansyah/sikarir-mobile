@@ -325,41 +325,4 @@ class AttendanceService {
       () async => http.Response.fromStream(await client.send(multipart)),
       const Duration(seconds: 30),
     );
-  }
-
-  /// Presensi pulang untuk catatan [absenId]. Jam keluar ditentukan server;
-  /// lokasi GPS divalidasi ulang terhadap radius jadwal.
-  Future<AttendanceItem> clockOut({
-    required String absenId,
-    required double latitude,
-    required double longitude,
-    String? token,
-  }) async {
-    final response = await _send(
-      () => client.post(
-        Uri.parse('${ApiConstants.absen}/$absenId/pulang'),
-        headers: _headers(token),
-        body: json.encode({'latitude': latitude, 'longitude': longitude}),
-      ),
-      const Duration(seconds: 10),
-    );
-
-    if (kDebugMode) {
-      debugPrint('Clock Out Response: ${response.statusCode}');
-    }
-
-    if (response.statusCode != 200) {
-      throw _errorFromStatus(response, 'Gagal melakukan presensi pulang');
-    }
-
-    final decoded = json.decode(response.body);
-    final data = decoded is Map ? (decoded['data'] ?? decoded) : null;
-    if (data is! Map<String, dynamic>) {
-      throw const AttendanceException(
-        'Respons server tidak valid.',
-        AttendanceErrorType.server,
-      );
-    }
-    return AttendanceItem.fromMap(data);
-  }
-}
+  }}

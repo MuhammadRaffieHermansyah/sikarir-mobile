@@ -5,6 +5,7 @@ import 'package:sikarir/features/attendance/data/models/attendance_model.dart';
 import 'package:sikarir/features/attendance/data/services/location_service.dart';
 import 'package:sikarir/features/attendance/presentation/providers/attendance_provider.dart';
 import 'package:sikarir/features/attendance/presentation/widgets/attendance_cards.dart';
+import 'package:sikarir/features/attendance/presentation/widgets/attendance_class_card.dart';
 import 'package:sikarir/features/attendance/presentation/widgets/attendance_clock_card.dart';
 import 'package:sikarir/features/attendance/presentation/widgets/attendance_stat_row.dart';
 import 'package:sikarir/features/attendance/presentation/widgets/izin_sakit_sheet.dart';
@@ -37,7 +38,6 @@ class AttendanceScreen extends StatefulWidget {
 class _AttendanceScreenState extends State<AttendanceScreen>
     with SingleTickerProviderStateMixin {
   late final TabController _tabController;
-  String? _selectedJadwalId;
 
   @override
   void initState() {
@@ -78,15 +78,6 @@ class _AttendanceScreenState extends State<AttendanceScreen>
       .where((c) => c.jadwalId.isNotEmpty && c.status == 'berlangsung')
       .toList();
 
-  /// Kelas terpilih (default: kelas aktif pertama). `null` bila tak ada.
-  TrainingClassModel? _selectedClassOf(List<TrainingClassModel> active) {
-    if (active.isEmpty) return null;
-    return active.firstWhere(
-      (c) => c.jadwalId == _selectedJadwalId,
-      orElse: () => active.first,
-    );
-  }
-
   String? get _token => context.read<AuthProvider>().user?.token;
 
   Future<void> _refresh() async {
@@ -126,30 +117,6 @@ class _AttendanceScreenState extends State<AttendanceScreen>
         jadwalId: kelas.jadwalId,
         sessionId: session?.id,
         target: _targetFor(kelas, session),
-      ),
-    );
-    if (mounted) provider.fetchAttendanceData(token);
-  }
-
-  Future<void> _handlePresensiPulang(
-      BuildContext ctx, AttendanceItem today, TrainingClassModel? kelas) async {
-    final provider = ctx.read<AttendanceProvider>();
-    final token = _token;
-
-    await showModalBottomSheet(
-      context: ctx,
-      isDismissible: false,
-      enableDrag: false,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      builder: (_) => LocationCheckSheet(
-        provider: provider,
-        token: token,
-        pesertaId: _resolvePesertaId(),
-        jadwalId: today.classId,
-        target: kelas != null ? _targetFor(kelas) : AttendanceTarget.defaultTarget,
-        action: AttendanceAction.pulang,
-        absenId: today.id,
       ),
     );
     if (mounted) provider.fetchAttendanceData(token);
@@ -230,15 +197,6 @@ class _AttendanceScreenState extends State<AttendanceScreen>
     return Consumer2<AttendanceProvider, TrainingClassProvider>(
       builder: (context, provider, classProvider, _) {
         final active = _activeClasses(classProvider);
-        final kelas = _selectedClassOf(active);
-        final today = kelas != null
-            ? provider.todayRecordFor(kelas.jadwalId)
-            : provider.todayAttendance;
-        final target = kelas != null
-            ? _targetFor(kelas, provider.openSessionFor(kelas.id))
-            : AttendanceTarget.defaultTarget;
-        // Status hari ini belum diketahui (loading / gagal) → jangan izinkan absen.
-        final todayUnknown = !provider.todayLoaded;
 
         return RefreshIndicator(
           color: AppColors.primary,
@@ -261,25 +219,9 @@ class _AttendanceScreenState extends State<AttendanceScreen>
                       message: provider.errorMessage!, onRetry: _refresh),
                   const SizedBox(height: 14),
                 ],
-                if (today != null) ...[
-                  AttendanceTodayStatusCard(today: today),
-                  const SizedBox(height: 14),
-                ],
-                if (active.length > 1 && today == null) ...[
-                  _buildClassSelector(active, kelas!),
-                  const SizedBox(height: 14),
-                ],
-                AttendanceLocationCard(target: target),
-                const SizedBox(height: 20),
-                ..._buildActions(
-                  context,
-                  provider: provider,
-                  classProvider: classProvider,
-                  kelas: kelas,
-                  activeClasses: active,
-                  today: today,
-                  todayUnknown: todayUnknown,
-                ),
+                _buildSectionTitle(active.length),
+                const SizedBox(height: 10),
+                ..._buildClassCards(context, provider, classProvider, active),
               ],
             ),
           ),
@@ -288,109 +230,114 @@ class _AttendanceScreenState extends State<AttendanceScreen>
     );
   }
 
-  List<Widget> _buildActions(
-    BuildContext context, {
-    required AttendanceProvider provider,
-    required TrainingClassProvider classProvider,
-    required TrainingClassModel? kelas,
-    required List<TrainingClassModel> activeClasses,
-    required AttendanceItem? today,
-    required bool todayUnknown,
-  }) {
-    final hasActive = activeClasses.isNotEmpty;
-    const spinner = Center(
-      child: Padding(
-        padding: EdgeInsets.all(12),
-        child: CircularProgressIndicator(color: AppColors.primary),
-      ),
-    );
-
-    if (today != null) {
-      if (today.canClockOut) {
-        // Target pulang mengikuti kelas dari catatan masuk hari ini.
-        TrainingClassModel? kelasMasuk = kelas;
-        for (final c in activeClasses) {
-          if (c.jadwalId == today.classId) {
-            kelasMasuk = c;
-            break;
-          }
-        }
-        return [
-          ElevatedButton.icon(
-            onPressed: () => _handlePresensiPulang(context, today, kelasMasuk),
-            icon: const Icon(Icons.logout_rounded, size: 22),
-            label: const Text('Presensi Pulang',
-                style: TextStyle(fontSize: 15, fontWeight: FontWeight.w800)),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: AppColors.primary,
-              foregroundColor: Colors.white,
-              minimumSize: const Size.fromHeight(52),
-              shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(14)),
-              elevation: 0,
+  Widget _buildSectionTitle(int count) {
+    return Row(
+      children: [
+        const Expanded(
+          child: Text(
+            'Presensi Pelatihan',
+            style: TextStyle(
+              fontSize: 15,
+              fontWeight: FontWeight.w800,
+              color: AppColors.textPrimary,
             ),
           ),
-        ];
-      }
+        ),
+        if (count > 0)
+          Text(
+            '$count kelas berlangsung',
+            style: const TextStyle(
+                fontSize: 12, color: AppColors.textSecondary),
+          ),
+      ],
+    );
+  }
+
+  /// Satu kartu presensi per kelas pelatihan yang sedang berlangsung.
+  List<Widget> _buildClassCards(
+    BuildContext context,
+    AttendanceProvider provider,
+    TrainingClassProvider classProvider,
+    List<TrainingClassModel> active,
+  ) {
+    if (active.isEmpty) {
+      if (classProvider.isLoading) return const [_spinner];
+      final today = provider.todayAttendance;
       return [
-        AttendanceInfoNote(
-          icon: Icons.info_outline_rounded,
-          text: today.status == 'hadir'
-              ? 'Presensi masuk dan pulang hari ini sudah tercatat.'
-              : 'Anda sudah melakukan presensi hari ini.',
-        ),
-      ];
-    }
-    if (todayUnknown && provider.isLoading) return const [spinner];
-    if (todayUnknown) {
-      return const [
-        AttendanceInfoNote(
-          icon: Icons.cloud_off_rounded,
-          text: 'Status presensi hari ini belum dapat diperiksa. '
-              'Tarik layar ke bawah atau tekan Coba Lagi.',
-        ),
-      ];
-    }
-    if (classProvider.isLoading && !hasActive) return const [spinner];
-    if (kelas == null) {
-      return const [
-        AttendanceInfoNote(
+        if (today != null) ...[
+          AttendanceTodayStatusCard(today: today),
+          const SizedBox(height: 12),
+        ],
+        const AttendanceInfoNote(
           icon: Icons.event_busy_rounded,
           text: 'Belum ada kelas pelatihan yang sedang berlangsung, '
               'sehingga presensi belum dapat dilakukan.',
         ),
       ];
     }
+
+    final cards = <Widget>[];
+    for (final kelas in active) {
+      final session = provider.openSessionFor(kelas.id);
+      final today = provider.todayRecordFor(kelas.jadwalId);
+      final target = _targetFor(kelas, session);
+      if (cards.isNotEmpty) cards.add(const SizedBox(height: 12));
+      cards.add(AttendanceClassCard(
+        kelas: kelas,
+        session: session,
+        sessionChecked: provider.sessionChecked(kelas.id),
+        today: today,
+        locationLabel: target.label,
+        radiusMeter: target.radiusMeter,
+        actions: _actionsFor(context, provider, kelas, today),
+      ));
+    }
+    return cards;
+  }
+
+  /// Aksi presensi di dalam kartu sebuah kelas.
+  List<Widget> _actionsFor(
+    BuildContext context,
+    AttendanceProvider provider,
+    TrainingClassModel kelas,
+    AttendanceItem? today,
+  ) {
+    // Sudah presensi hari ini → status tampil di kartu, tidak ada aksi lagi.
+    if (today != null) return const [];
+
+    // Status hari ini belum diketahui (loading / gagal) → jangan izinkan absen.
+    if (!provider.todayLoaded) {
+      if (provider.isLoading) return const [_spinner];
+      return const [
+        _CardNote(
+          icon: Icons.cloud_off_rounded,
+          text: 'Status presensi hari ini belum dapat diperiksa. '
+              'Tarik layar ke bawah untuk mencoba lagi.',
+        ),
+      ];
+    }
+
     // Presensi masuk dikontrol instruktur: hanya saat sesi dibuka.
-    final session = provider.openSessionFor(kelas.id);
     final Widget masuk;
     if (!provider.sessionChecked(kelas.id)) {
-      masuk = const AttendanceInfoNote(
+      masuk = const _CardNote(
         icon: Icons.cloud_off_rounded,
         text: 'Status sesi presensi belum dapat diperiksa. '
             'Tarik layar ke bawah untuk mencoba lagi.',
       );
-    } else if (session == null) {
-      masuk = const AttendanceInfoNote(
+    } else if (provider.openSessionFor(kelas.id) == null) {
+      masuk = const _CardNote(
         icon: Icons.lock_clock_rounded,
-        text: 'Presensi belum dibuka oleh instruktur. '
-            'Anda dapat melakukan presensi saat sesi dibuka.',
+        text: 'Presensi belum dibuka oleh instruktur.',
       );
     } else {
-      masuk = ElevatedButton.icon(
+      masuk = _primaryButton(
+        icon: Icons.fingerprint_rounded,
+        label: 'Presensi Masuk',
         onPressed: () => _handlePresensiHadir(context, kelas),
-        icon: const Icon(Icons.fingerprint_rounded, size: 22),
-        label: const Text('Presensi Masuk',
-            style: TextStyle(fontSize: 15, fontWeight: FontWeight.w800)),
-        style: ElevatedButton.styleFrom(
-          backgroundColor: AppColors.primary,
-          foregroundColor: Colors.white,
-          minimumSize: const Size.fromHeight(52),
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-          elevation: 0,
-        ),
       );
     }
+
     return [
       masuk,
       const SizedBox(height: 10),
@@ -404,6 +351,26 @@ class _AttendanceScreenState extends State<AttendanceScreen>
     ];
   }
 
+  Widget _primaryButton({
+    required IconData icon,
+    required String label,
+    required VoidCallback onPressed,
+  }) {
+    return ElevatedButton.icon(
+      onPressed: onPressed,
+      icon: Icon(icon, size: 22),
+      label: Text(label,
+          style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w800)),
+      style: ElevatedButton.styleFrom(
+        backgroundColor: AppColors.primary,
+        foregroundColor: Colors.white,
+        minimumSize: const Size.fromHeight(50),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+        elevation: 0,
+      ),
+    );
+  }
+
   Widget _izinSakitButton(
       BuildContext context, String type, TrainingClassModel kelas) {
     final isIzin = type == 'izin';
@@ -412,42 +379,13 @@ class _AttendanceScreenState extends State<AttendanceScreen>
       onPressed: () => _handleIzinSakit(context, type, kelas),
       icon: Icon(isIzin ? Icons.mail_outline_rounded : Icons.healing_rounded,
           size: 18),
-      label: Text(isIzin ? 'Pengajuan Izin' : 'Laporan Sakit',
+      label: Text(isIzin ? 'Izin' : 'Sakit',
           style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700)),
       style: OutlinedButton.styleFrom(
         foregroundColor: color,
         side: BorderSide(color: color),
-        minimumSize: const Size.fromHeight(46),
+        minimumSize: const Size.fromHeight(44),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-      ),
-    );
-  }
-
-  Widget _buildClassSelector(
-      List<TrainingClassModel> active, TrainingClassModel selected) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 4),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: AppColors.cardBorder),
-      ),
-      child: DropdownButtonHideUnderline(
-        child: DropdownButton<String>(
-          isExpanded: true,
-          value: selected.jadwalId,
-          icon: const Icon(Icons.expand_more_rounded),
-          items: active
-              .map((c) => DropdownMenuItem(
-                    value: c.jadwalId,
-                    child: Text(c.title,
-                        overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(
-                            fontSize: 13, fontWeight: FontWeight.w700)),
-                  ))
-              .toList(),
-          onChanged: (v) => setState(() => _selectedJadwalId = v),
-        ),
       ),
     );
   }
@@ -716,6 +654,45 @@ class _AttendanceScreenState extends State<AttendanceScreen>
               : 'Muat riwayat lebih lama',
           style: const TextStyle(fontWeight: FontWeight.w700),
         ),
+      ),
+    );
+  }
+}
+
+const _spinner = Center(
+  child: Padding(
+    padding: EdgeInsets.all(12),
+    child: CircularProgressIndicator(color: AppColors.primary),
+  ),
+);
+
+/// Catatan ringkas di dalam kartu presensi kelas.
+class _CardNote extends StatelessWidget {
+  final IconData icon;
+  final String text;
+
+  const _CardNote({required this.icon, required this.text});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+      decoration: BoxDecoration(
+        color: const Color(0xFFFFF8EC),
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Row(
+        children: [
+          Icon(icon, size: 18, color: AppColors.orangeText),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Text(text,
+                style: const TextStyle(
+                    fontSize: 12.5,
+                    fontWeight: FontWeight.w600,
+                    color: AppColors.orangeText)),
+          ),
+        ],
       ),
     );
   }

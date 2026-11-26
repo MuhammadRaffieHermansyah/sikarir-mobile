@@ -31,17 +31,4 @@ class AttendanceRepository {
     return service.submitAttendance(request, token);
   }
 
-  Future<AttendanceItem> clockOut({
-    required String absenId,
-    required double latitude,
-    required double longitude,
-    String? token,
-  }) {
-    return service.clockOut(
-      absenId: absenId,
-      latitude: latitude,
-      longitude: longitude,
-      token: token,
-    );
-  }
 }

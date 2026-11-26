@@ -7,7 +7,6 @@ class AttendanceItem {
   final String className;
   final String date;
   final String? clockInTime;
-  final String? clockOutTime;
   final String status; // 'hadir', 'izin', 'sakit', 'alpha'
   final String? notes;
   final String? location;
@@ -17,8 +16,7 @@ class AttendanceItem {
   final double? latitude;
   final double? longitude;
   final double? jarakMeter;
-  // Presensi pulang & lampiran (izin/sakit)
-  final double? jarakKeluarMeter;
+  // Lampiran (izin/sakit)
   final String? attachmentUrl;
 
   AttendanceItem({
@@ -28,7 +26,6 @@ class AttendanceItem {
     required this.className,
     required this.date,
     this.clockInTime,
-    this.clockOutTime,
     required this.status,
     this.notes,
     this.location,
@@ -37,36 +34,8 @@ class AttendanceItem {
     this.latitude,
     this.longitude,
     this.jarakMeter,
-    this.jarakKeluarMeter,
     this.attachmentUrl,
   });
-
-  /// Sudah presensi pulang.
-  bool get hasClockedOut => clockOutTime != null && clockOutTime!.isNotEmpty;
-
-  /// Presensi pulang hanya untuk presensi hadir yang belum pulang.
-  bool get canClockOut => status == 'hadir' && !hasClockedOut;
-
-  /// Salinan dengan sebagian field diganti (dipakai saat presensi pulang).
-  AttendanceItem copyWithClockOut(AttendanceItem updated) => AttendanceItem(
-        id: id,
-        userId: userId,
-        classId: classId,
-        className: className,
-        date: date,
-        clockInTime: clockInTime,
-        clockOutTime: updated.clockOutTime,
-        status: status,
-        notes: notes,
-        location: location,
-        photoUrl: photoUrl,
-        roomName: roomName,
-        latitude: latitude,
-        longitude: longitude,
-        jarakMeter: jarakMeter,
-        jarakKeluarMeter: updated.jarakKeluarMeter,
-        attachmentUrl: attachmentUrl,
-      );
 
   factory AttendanceItem.fromMap(Map<String, dynamic> map) {
     return AttendanceItem(
@@ -76,7 +45,6 @@ class AttendanceItem {
       className: _resolveClassName(map),
       date: (map['tanggal'] ?? map['date'] ?? '').toString(),
       clockInTime: map['jam_hadir']?.toString() ?? map['jam_masuk']?.toString() ?? map['clock_in']?.toString(),
-      clockOutTime: map['jam_keluar']?.toString() ?? map['clock_out']?.toString(),
       status: normalizeStatus(map['status_kehadiran'] ?? map['status'] ?? 'hadir'),
       notes: map['keterangan']?.toString() ?? map['notes']?.toString(),
       location: map['lokasi']?.toString() ?? map['location']?.toString(),
@@ -91,7 +59,6 @@ class AttendanceItem {
       latitude: _toDouble(map['latitude']),
       longitude: _toDouble(map['longitude']),
       jarakMeter: _toDouble(map['jarak_meter']),
-      jarakKeluarMeter: _toDouble(map['jarak_keluar_meter']),
       attachmentUrl: (() {
         final raw = map['lampiran_url']?.toString();
         return (raw != null && raw.isNotEmpty) ? raw : null;
