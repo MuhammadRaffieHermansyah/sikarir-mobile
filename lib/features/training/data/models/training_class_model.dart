@@ -21,6 +21,10 @@ class TrainingClassModel {
   final double? longitude;
   final int? radiusMeter;
 
+  /// Jam pelatihan dari jadwal (HH:mm); kosong bila tidak tersedia.
+  final String scheduleStart;
+  final String scheduleEnd;
+
   TrainingClassModel({
     required this.id,
     required this.pelatihanId,
@@ -41,7 +45,14 @@ class TrainingClassModel {
     this.latitude,
     this.longitude,
     this.radiusMeter,
+    this.scheduleStart = '',
+    this.scheduleEnd = '',
   });
+
+  static String _hm(dynamic v) {
+    final s = v?.toString() ?? '';
+    return s.length >= 5 ? s.substring(0, 5) : '';
+  }
 
   static double? _num(dynamic v) =>
       v == null ? null : (v is num ? v.toDouble() : double.tryParse(v.toString()));
@@ -83,6 +94,8 @@ class TrainingClassModel {
       latitude: _num(jadwal?['lokasi_latitude'] ?? map['lokasi_latitude']),
       longitude: _num(jadwal?['lokasi_longitude'] ?? map['lokasi_longitude']),
       radiusMeter: _num(jadwal?['radius_meter'] ?? map['radius_meter'])?.round(),
+      scheduleStart: _hm(jadwal?['jam_mulai'] ?? map['jam_mulai']),
+      scheduleEnd: _hm(jadwal?['jam_selesai'] ?? map['jam_selesai']),
     );
   }
 

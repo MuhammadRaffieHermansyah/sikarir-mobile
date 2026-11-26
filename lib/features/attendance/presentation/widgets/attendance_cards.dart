@@ -162,10 +162,6 @@ class AttendanceTodayStatusCard extends StatelessWidget {
                   Text('Jam masuk: ${formatApiTimeLabel(today.clockInTime!)}',
                       style: TextStyle(
                           fontSize: 12, color: s.fg.withValues(alpha: 0.8))),
-                if (today.hasClockedOut)
-                  Text('Jam pulang: ${formatApiTimeLabel(today.clockOutTime!)}',
-                      style: TextStyle(
-                          fontSize: 12, color: s.fg.withValues(alpha: 0.8))),
                 if (today.jarakMeter != null)
                   Text('Jarak saat absen: ${today.jarakMeter!.toStringAsFixed(0)} m',
                       style: TextStyle(
@@ -275,8 +271,7 @@ class AttendanceHistoryCard extends StatelessWidget {
                   size: 14, color: AppColors.textSecondary),
               const SizedBox(width: 4),
               Text(
-                'Masuk: ${item.clockInTime != null ? formatApiTimeLabel(item.clockInTime!) : '-'}'
-                '${item.hasClockedOut ? '  •  Pulang: ${formatApiTimeLabel(item.clockOutTime!)}' : ''}',
+                'Masuk: ${item.clockInTime != null ? formatApiTimeLabel(item.clockInTime!) : '-'}',
                 style: const TextStyle(
                     fontSize: 11.5, color: AppColors.textSecondary),
               ),

@@ -9,14 +9,15 @@ tabel, route, dan controller berikut. Semua endpoint di bawah `ApiConstants.base
 
 Instruktur membuat **sesi presensi** per pertemuan sebuah kelas, lalu
 **membuka/menutup** presensinya. Peserta hanya bisa presensi masuk (hadir) saat
-ada sesi yang sedang dibuka. Izin/sakit dan presensi pulang tidak bergantung pada sesi.
+ada sesi yang sedang dibuka. Izin/sakit tidak bergantung pada sesi.
+Aplikasi hanya memakai presensi **masuk**; tidak ada presensi pulang.
 
 ## 2. Tabel `sesi_presensi`
 
 | Kolom | Tipe | Catatan |
 |---|---|---|
 | `id_sesi` | bigint PK | |
-| `id_kelas` | FK → kelas pelatihan (`id_kelas`) | `cascadeOnDelete` |
+| `id_jadwal` | FK → `jadwal_pelatihan` | `cascadeOnDelete`; sesi berlaku untuk semua peserta jadwal itu (seperti modul). Endpoint tetap memakai `id_kelas` lalu di-resolve ke jadwal |
 | `id_instruktur` | FK | pembuat sesi |
 | `pertemuan_ke` | unsigned int | unik per `id_kelas` |
 | `tanggal` | date | |
@@ -28,7 +29,10 @@ ada sesi yang sedang dibuka. Izin/sakit dan presensi pulang tidak bergantung pad
 | `absen_dibuka` | boolean | **default `false`** |
 | timestamps | | |
 
-Unique index: (`id_kelas`, `pertemuan_ke`).
+Unique index: (`id_jadwal`, `pertemuan_ke`).
+
+> Status: sudah diimplementasikan di `sikarir-web` (`SesiPresensiController`,
+> migrasi `2026_11_26_000001_create_sesi_presensi_table`, tes `SesiPresensiTest`).
 
 Tabel `absen` perlu kolom baru `id_sesi` (nullable FK → `sesi_presensi`) dan unique
 (`id_peserta`, `id_sesi`) agar satu peserta tak bisa hadir dua kali di sesi yang sama.
@@ -138,7 +142,8 @@ Body kini boleh memuat `id_sesi` (hanya dikirim untuk presensi **hadir**):
 ```
 
 Tambahan validasi jika `status_kehadiran = hadir`:
-1. `id_sesi` **wajib**; sesi harus ada dan milik kelas dari `id_jadwal` → jika tidak `422`.
+1. `id_sesi` **wajib** bila jadwal sudah punya sesi presensi (jadwal tanpa sesi sama
+   sekali tetap memakai perilaku lama); sesi harus ada dan milik `id_jadwal` → jika tidak `422`.
 2. `absen_dibuka` harus `true` dan `tanggal` sesi = hari ini (+ jam di rentang jika dipakai)
    → jika tidak `403` dengan pesan, mis. `"Presensi belum dibuka oleh instruktur."`.
 3. Jarak (`latitude`,`longitude`) dihitung terhadap `lokasi_latitude/longitude` **sesi**;
@@ -147,8 +152,6 @@ Tambahan validasi jika `status_kehadiran = hadir`:
 4. Satu peserta satu kali per sesi → `422` jika duplikat.
 
 `izin`/`sakit` tidak memerlukan `id_sesi` dan perilaku lamanya tidak berubah.
-Presensi pulang (`POST /absen/{id}/pulang`) memvalidasi radius ke titik sesi absen
-terkait; selain itu tidak berubah.
 
 ## 5. Format error (dibaca aplikasi)
 

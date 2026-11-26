@@ -62,7 +62,6 @@ class FakeAttendanceRepository extends AttendanceRepository {
   Future<AttendanceItem?> Function() onToday = () async => null;
   Future<AttendanceRekap?> Function() onRekap = () async => null;
   Future<AttendanceSubmitResult> Function(AttendanceSubmitRequest r)? onSubmit;
-  Future<AttendanceItem> Function(String absenId)? onClockOut;
   int submitCalls = 0;
 
   @override
@@ -85,14 +84,6 @@ class FakeAttendanceRepository extends AttendanceRepository {
     return onSubmit!(request);
   }
 
-  @override
-  Future<AttendanceItem> clockOut({
-    required String absenId,
-    required double latitude,
-    required double longitude,
-    String? token,
-  }) =>
-      onClockOut!(absenId);
 }
 
 AttendanceSubmitResult _result(List<AttendanceItem> items,
@@ -635,60 +626,18 @@ void main() {
       expect(repo.submitCalls, 1);
     });
 
-    test('clockOut memperbarui catatan di riwayat & today', () async {
-      repo.onPage = (_) async => AttendancePage(
-          items: [AttendanceItem.fromMap(_absen(id: 5))], hasMore: false);
-      repo.onToday = () async => AttendanceItem.fromMap(_absen(id: 5));
-      await provider.fetchAttendanceData();
-      expect(provider.todayAttendance!.canClockOut, isTrue);
-
-      repo.onClockOut = (_) async => AttendanceItem.fromMap(
-          {..._absen(id: 5), 'jam_keluar': '16:00:00', 'jarak_keluar_meter': 12.5});
-
-      await provider.clockOut(absenId: '5', latitude: -8.1, longitude: 113.7);
-
-      expect(provider.todayAttendance!.clockOutTime, '16:00:00');
-      expect(provider.todayAttendance!.canClockOut, isFalse);
-      expect(provider.allAttendanceList.single.jarakKeluarMeter, 12.5);
-      // data presensi masuk tidak berubah
-      expect(provider.allAttendanceList.single.clockInTime, '08:00');
-      expect(provider.isSubmitting, isFalse);
-    });
-
-    test('clockOut gagal: state tidak berubah & error diteruskan', () async {
-      repo.onPage = (_) async => AttendancePage(
-          items: [AttendanceItem.fromMap(_absen(id: 5))], hasMore: false);
-      await provider.fetchAttendanceData();
-
-      repo.onClockOut = (_) async => throw const AttendanceException(
-          'Anda berada 250 meter dari lokasi.', AttendanceErrorType.validation, 403);
-
-      await expectLater(
-        provider.clockOut(absenId: '5', latitude: 0, longitude: 0),
-        throwsA(isA<AttendanceException>()),
-      );
-      expect(provider.allAttendanceList.single.hasClockedOut, isFalse);
-      expect(provider.isSubmitting, isFalse);
-    });
   });
 
-  group('Presensi pulang, lampiran, rentang (model)', () {
-    test('fromMap membaca jam_keluar, jarak_keluar_meter, lampiran_url', () {
+  group('Lampiran & rentang (model)', () {
+    test('fromMap membaca lampiran_url', () {
       final item = AttendanceItem.fromMap({
         ..._absen(id: 1),
-        'jam_keluar': '16:00:00',
-        'jarak_keluar_meter': '18.25',
         'lampiran_url': 'http://x/storage/absen-lampiran/a.jpg',
       });
-      expect(item.hasClockedOut, isTrue);
-      expect(item.canClockOut, isFalse);
-      expect(item.jarakKeluarMeter, 18.25);
       expect(item.attachmentUrl, 'http://x/storage/absen-lampiran/a.jpg');
     });
 
-    test('canClockOut hanya untuk hadir yang belum pulang; lampiran kosong → null', () {
-      expect(AttendanceItem.fromMap(_absen(id: 1)).canClockOut, isTrue);
-      expect(AttendanceItem.fromMap(_absen(id: 1, status: 'izin')).canClockOut, isFalse);
+    test('lampiran kosong → null', () {
       expect(AttendanceItem.fromMap({..._absen(id: 1), 'lampiran_url': ''}).attachmentUrl, isNull);
     });
 
@@ -708,7 +657,7 @@ void main() {
     });
   });
 
-  group('AttendanceService pulang, lampiran, rentang', () {
+  group('AttendanceService lampiran & rentang', () {
     test('submit rentang: parse daftar catatan + dilewati + pesan', () async {
       final result = await _service((_) async => _json({
             'data': [
@@ -767,47 +716,6 @@ void main() {
       expect(called, isFalse);
     });
 
-    test('clockOut: POST /absen/{id}/pulang dengan koordinat, parse hasil', () async {
-      late Uri url;
-      late Map<String, dynamic> sentBody;
-      final item = await _service((req) async {
-        url = req.url;
-        sentBody = json.decode(req.body) as Map<String, dynamic>;
-        return _json({
-          'data': {..._absen(id: 5), 'jam_keluar': '16:00:00'}
-        });
-      }).clockOut(absenId: '5', latitude: -8.1, longitude: 113.7, token: 't');
-
-      expect(url.path, endsWith('/absen/5/pulang'));
-      expect(sentBody, {'latitude': -8.1, 'longitude': 113.7});
-      expect(item.clockOutTime, '16:00:00');
-    });
-
-    test('clockOut: 403 (di luar radius) & 422 memakai pesan server', () async {
-      await expectLater(
-        _service((_) async => _json(
-                {'message': 'Anda berada 250 meter dari lokasi pelatihan.'}, 403))
-            .clockOut(absenId: '5', latitude: 0, longitude: 0),
-        throwsA(isA<AttendanceException>()
-            .having((e) => e.message, 'message', contains('250 meter'))
-            .having((e) => e.type, 'type', AttendanceErrorType.validation)),
-      );
-      await expectLater(
-        _service((_) async => _json({'message': 'Presensi pulang sudah tercatat.'}, 422))
-            .clockOut(absenId: '5', latitude: 0, longitude: 0),
-        throwsA(isA<AttendanceException>()
-            .having((e) => e.message, 'message', 'Presensi pulang sudah tercatat.')),
-      );
-    });
-
-    test('clockOut: 401 → unauthorized', () async {
-      await expectLater(
-        _service((_) async => _json({}, 401))
-            .clockOut(absenId: '5', latitude: 0, longitude: 0),
-        throwsA(isA<AttendanceException>()
-            .having((e) => e.type, 'type', AttendanceErrorType.unauthorized)),
-      );
-    });
   });
 
   group('AttendanceSubmitRequest', () {
