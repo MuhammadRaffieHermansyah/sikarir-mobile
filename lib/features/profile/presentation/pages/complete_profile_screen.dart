@@ -78,7 +78,8 @@ class _CompleteProfileScreenState extends State<CompleteProfileScreen> {
     if (profile != null && !_initialized) {
       setState(() {
         if (_namaController.text.trim().isEmpty) {
-          _namaController.text = (profile.nama != null && profile.nama!.isNotEmpty)
+          _namaController.text =
+              (profile.nama != null && profile.nama!.isNotEmpty)
               ? profile.nama!
               : (authUser?.name ?? '');
         }
