@@ -8,7 +8,11 @@ import 'package:sikarir/features/profile/data/services/account_service.dart';
 /// Ganti password untuk semua role (`PUT /profile/password`).
 class ChangePasswordScreen extends StatefulWidget {
   final AccountService? service;
-  const ChangePasswordScreen({super.key, this.service});
+
+  /// True jika dibuka otomatis setelah login dengan sandi sementara dari admin.
+  final bool sandiSementara;
+
+  const ChangePasswordScreen({super.key, this.service, this.sandiSementara = false});
 
   @override
   State<ChangePasswordScreen> createState() => _ChangePasswordScreenState();
@@ -94,19 +98,21 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
               borderRadius: BorderRadius.circular(14),
               border: Border.all(color: AppColors.cardBorder),
             ),
-            child: const Row(
+            child: Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Icon(
+                const Icon(
                   Icons.shield_outlined,
                   size: 18,
                   color: AppColors.mintDark,
                 ),
-                SizedBox(width: 10),
+                const SizedBox(width: 10),
                 Expanded(
                   child: Text(
-                    'Gunakan password minimal 8 karakter dan berbeda dari password lama.',
-                    style: TextStyle(
+                    widget.sandiSementara
+                        ? 'Anda masuk memakai sandi sementara dari admin BLK. Isi "password lama" dengan sandi sementara tersebut, lalu buat password baru minimal 8 karakter.'
+                        : 'Gunakan password minimal 8 karakter dan berbeda dari password lama.',
+                    style: const TextStyle(
                       fontSize: 12.5,
                       height: 1.4,
                       color: AppColors.mintDark,

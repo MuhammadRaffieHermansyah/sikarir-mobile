@@ -6,15 +6,21 @@ import 'package:sikarir/core/widgets/blk_header.dart';
 import 'package:sikarir/features/auth/presentation/providers/auth_provider.dart';
 import 'package:sikarir/features/certificate/data/models/certificate_model.dart';
 import 'package:sikarir/features/certificate/presentation/providers/certificate_provider.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 class CertificateScreen extends StatefulWidget {
   final VoidCallback? onNotificationTap;
   final VoidCallback? onProfileTap;
 
+  /// Pembuka tautan file sertifikat. Bawaan: browser/penampil PDF di HP.
+  /// Bisa diganti saat pengujian.
+  final Future<bool> Function(Uri uri)? openUrl;
+
   const CertificateScreen({
     super.key,
     this.onNotificationTap,
     this.onProfileTap,
+    this.openUrl,
   });
 
   @override
@@ -209,24 +215,43 @@ class _CertificateScreenState extends State<CertificateScreen> {
     );
   }
 
-  void _handleDownloadCertificate(CertificateModel cert) {
+  static Future<bool> _openExternally(Uri uri) =>
+      launchUrl(uri, mode: LaunchMode.externalApplication);
+
+  /// Buka file e-sertifikat (PDF/gambar) di aplikasi luar agar bisa dilihat & disimpan.
+  Future<void> _handleDownloadCertificate(CertificateModel cert) async {
+    final messenger = ScaffoldMessenger.of(context);
     final url = cert.fileUrl;
-    if (url.isNotEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Mengunduh sertifikat ${cert.certificateNumber}...'),
-          action: SnackBarAction(
-            label: 'Salin URL',
-            onPressed: () {
-              Clipboard.setData(ClipboardData(text: url));
-            },
-          ),
-        ),
-      );
-    } else {
-      ScaffoldMessenger.of(context).showSnackBar(
+
+    if (url.isEmpty) {
+      messenger.showSnackBar(
         const SnackBar(
           content: Text('File dokumen e-sertifikat belum diunggah oleh admin BLK.'),
+        ),
+      );
+      return;
+    }
+
+    final uri = Uri.tryParse(url);
+    var opened = false;
+    if (uri != null && uri.hasScheme) {
+      try {
+        opened = await (widget.openUrl ?? _openExternally)(uri);
+      } catch (_) {
+        opened = false;
+      }
+    }
+
+    if (!opened) {
+      messenger.showSnackBar(
+        SnackBar(
+          content: const Text(
+            'Sertifikat tidak dapat dibuka. Periksa koneksi ke server BLK, atau salin tautannya.',
+          ),
+          action: SnackBarAction(
+            label: 'Salin URL',
+            onPressed: () => Clipboard.setData(ClipboardData(text: url)),
+          ),
         ),
       );
     }
