@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import 'package:sikarir/core/constants/app_theme.dart';
 import 'package:sikarir/features/auth/data/models/auth_models.dart';
 import 'package:sikarir/features/auth/presentation/providers/auth_provider.dart';
+import 'package:sikarir/features/profile/presentation/pages/change_password_screen.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -33,6 +34,7 @@ class _LoginScreenState extends State<LoginScreen> {
 
     final authProvider = context.read<AuthProvider>();
     final scaffoldMessenger = ScaffoldMessenger.of(context);
+    final navigator = Navigator.of(context, rootNavigator: true);
 
     try {
       await authProvider.login(
@@ -64,6 +66,15 @@ class _LoginScreenState extends State<LoginScreen> {
           ),
         );
       }
+
+      // Akun baru direset admin BLK: wajib ganti sandi sementara.
+      if (authProvider.user?.mustChangePassword ?? false) {
+        navigator.push(
+          MaterialPageRoute(
+            builder: (_) => const ChangePasswordScreen(sandiSementara: true),
+          ),
+        );
+      }
     } catch (e) {
       if (mounted) {
         final message = e.toString().replaceFirst('Exception: ', '');
@@ -91,8 +102,9 @@ class _LoginScreenState extends State<LoginScreen> {
     }
   }
 
+  /// Reset sandi dilakukan admin BLK (tanpa email): tampilkan langkah
+  /// yang harus ditempuh pengguna, bukan pesan "link terkirim".
   void _showForgotPasswordModal() {
-    final emailController = TextEditingController(text: _emailController.text.trim());
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
@@ -107,7 +119,7 @@ class _LoginScreenState extends State<LoginScreen> {
             left: 24,
             right: 24,
             top: 24,
-            bottom: MediaQuery.of(context).viewInsets.bottom + 24,
+            bottom: MediaQuery.of(context).viewPadding.bottom + 24,
           ),
           child: Column(
             mainAxisSize: MainAxisSize.min,
@@ -134,53 +146,56 @@ class _LoginScreenState extends State<LoginScreen> {
               ),
               const SizedBox(height: 8),
               const Text(
-                'Masukkan email akun SIKARIR Anda untuk menerima instruksi reset kata sandi.',
+                'Atur ulang kata sandi dilakukan oleh admin BLK untuk menjaga keamanan akun Anda.',
                 style: TextStyle(fontSize: 13, color: AppColors.textSecondary, height: 1.4),
               ),
-              const SizedBox(height: 20),
-              TextField(
-                controller: emailController,
-                keyboardType: TextInputType.emailAddress,
-                decoration: InputDecoration(
-                  labelText: 'Email Terdaftar',
-                  hintText: 'contoh@email.com',
-                  prefixIcon: const Icon(Icons.email_outlined, color: AppColors.primary),
-                  filled: true,
-                  fillColor: const Color(0xFFF7FAF8),
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(14),
-                    borderSide: const BorderSide(color: AppColors.cardBorder),
-                  ),
-                  enabledBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(14),
-                    borderSide: const BorderSide(color: AppColors.cardBorder),
+              const SizedBox(height: 16),
+              ..._forgotPasswordSteps.indexed.map(
+                (entry) => Padding(
+                  padding: const EdgeInsets.only(bottom: 12),
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      CircleAvatar(
+                        radius: 12,
+                        backgroundColor: AppColors.primary,
+                        child: Text(
+                          '${entry.$1 + 1}',
+                          style: const TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.white,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Text(
+                          entry.$2,
+                          style: const TextStyle(
+                            fontSize: 13,
+                            color: AppColors.textPrimary,
+                            height: 1.4,
+                          ),
+                        ),
+                      ),
+                    ],
                   ),
                 ),
               ),
-              const SizedBox(height: 20),
+              const SizedBox(height: 8),
               SizedBox(
                 width: double.infinity,
                 height: 48,
                 child: ElevatedButton(
-                  onPressed: () {
-                    Navigator.pop(context);
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(
-                        content: const Text('Link instruksi pemulihan telah dikirim ke email Anda.'),
-                        backgroundColor: AppColors.primary,
-                        behavior: SnackBarBehavior.floating,
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                        margin: const EdgeInsets.all(16),
-                      ),
-                    );
-                  },
+                  onPressed: () => Navigator.pop(context),
                   style: ElevatedButton.styleFrom(
                     backgroundColor: AppColors.primary,
                     foregroundColor: Colors.white,
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                     elevation: 0,
                   ),
-                  child: const Text('Kirim Instruksi', style: TextStyle(fontWeight: FontWeight.bold)),
+                  child: const Text('Mengerti', style: TextStyle(fontWeight: FontWeight.bold)),
                 ),
               ),
             ],
@@ -189,6 +204,12 @@ class _LoginScreenState extends State<LoginScreen> {
       },
     );
   }
+
+  static const _forgotPasswordSteps = [
+    'Hubungi admin BLK (datang ke kantor BLK atau lewat kontak resmi BLK) dan sebutkan email akun Anda.',
+    'Admin akan memberikan kata sandi sementara.',
+    'Masuk memakai kata sandi sementara tersebut, lalu aplikasi akan meminta Anda membuat kata sandi baru.',
+  ];
 
   @override
   Widget build(BuildContext context) {

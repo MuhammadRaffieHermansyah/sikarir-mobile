@@ -31,12 +31,17 @@ class LoginResponse {
   /// 'peserta' (default) atau 'instruktur'.
   final String role;
 
+  /// True jika akun memakai sandi sementara hasil reset admin BLK
+  /// dan pengguna harus segera menggantinya.
+  final bool mustChangePassword;
+
   LoginResponse({
     required this.token,
     required this.userId,
     required this.name,
     required this.email,
     this.role = 'peserta',
+    this.mustChangePassword = false,
   });
 
   bool get isInstructor => role == 'instruktur';
@@ -47,6 +52,7 @@ class LoginResponse {
     String? name,
     String? email,
     String? role,
+    bool? mustChangePassword,
   }) {
     return LoginResponse(
       token: token ?? this.token,
@@ -54,6 +60,7 @@ class LoginResponse {
       name: name ?? this.name,
       email: email ?? this.email,
       role: role ?? this.role,
+      mustChangePassword: mustChangePassword ?? this.mustChangePassword,
     );
   }
 
@@ -64,6 +71,7 @@ class LoginResponse {
       "name": name,
       "email": email,
       "role": role,
+      "must_change_password": mustChangePassword,
     };
   }
 
@@ -105,12 +113,17 @@ class LoginResponse {
         map['peran'] ??
         'peserta';
 
+    final rawMustChange = userData['must_change_password'] ??
+        data['must_change_password'] ??
+        map['must_change_password'];
+
     return LoginResponse(
       token: token.toString(),
       userId: userId.toString(),
       name: name.toString(),
       email: email.toString(),
       role: _normalizeRole(rawRole),
+      mustChangePassword: rawMustChange == true || rawMustChange == 1 || rawMustChange == '1',
     );
   }
 }
