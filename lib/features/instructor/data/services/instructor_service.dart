@@ -224,6 +224,31 @@ class InstructorService {
     }, 'Terjadi kesalahan saat memuat sesi presensi.');
   }
 
+  /// Daftar peserta kelas beserta statusnya pada satu sesi (rekap instruktur).
+  Future<List<SessionParticipant>> getSessionParticipants(
+    String sessionId,
+    String? token,
+  ) {
+    return _guard(() async {
+      final res = await client
+          .get(
+            Uri.parse('${ApiConstants.sesiPresensi(sessionId)}/peserta'),
+            headers: _headers(token),
+          )
+          .timeout(const Duration(seconds: 10));
+      if (res.statusCode != 200) {
+        throw _error(res, 'Gagal memuat rekap peserta');
+      }
+      final decoded = _decode(res.body);
+      final data = decoded is Map ? decoded['data'] : null;
+      final list = data is Map ? data['peserta'] : null;
+      return (list is List ? list : const [])
+          .whereType<Map>()
+          .map((e) => SessionParticipant.fromMap(Map<String, dynamic>.from(e)))
+          .toList();
+    }, 'Terjadi kesalahan saat memuat rekap peserta.');
+  }
+
   Future<void> createAttendanceSession(
     String classId,
     AttendanceSessionInput input,
