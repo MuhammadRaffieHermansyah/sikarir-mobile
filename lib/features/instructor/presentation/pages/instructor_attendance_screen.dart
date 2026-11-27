@@ -6,6 +6,7 @@ import 'package:sikarir/features/instructor/data/models/attendance_session_model
 import 'package:sikarir/features/instructor/presentation/providers/instructor_provider.dart';
 import 'package:sikarir/features/instructor/presentation/widgets/attendance_session_form_sheet.dart';
 import 'package:sikarir/features/instructor/presentation/widgets/instructor_ui.dart';
+import 'package:sikarir/features/instructor/presentation/widgets/session_participants_sheet.dart';
 import 'package:sikarir/features/training/data/models/training_class_model.dart';
 
 /// Kelola sesi presensi sebuah kelas: buat, buka/tutup, dan hapus.
@@ -33,6 +34,23 @@ class _InstructorAttendanceScreenState
   Future<void> _load() {
     if (!mounted) return Future.value();
     return context.read<InstructorProvider>().fetchSessions(_classId, _token);
+  }
+
+  void _showParticipants(AttendanceSession session) {
+    final service = context.read<InstructorProvider>().service;
+    final token = _token;
+    showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.white,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (_) => SessionParticipantsSheet(
+        session: session,
+        load: () => service.getSessionParticipants(session.id, token),
+      ),
+    );
   }
 
   void _toast(String message, {bool error = false}) {
@@ -159,6 +177,7 @@ class _InstructorAttendanceScreenState
           busy: provider.isSaving,
           onToggle: () => _toggle(sessions[i]),
           onDelete: () => _delete(sessions[i]),
+          onShowParticipants: () => _showParticipants(sessions[i]),
         ),
       );
     }
@@ -199,12 +218,14 @@ class _SessionCard extends StatelessWidget {
   final bool busy;
   final VoidCallback onToggle;
   final VoidCallback onDelete;
+  final VoidCallback onShowParticipants;
 
   const _SessionCard({
     required this.session,
     required this.busy,
     required this.onToggle,
     required this.onDelete,
+    required this.onShowParticipants,
   });
 
   @override
@@ -280,8 +301,28 @@ class _SessionCard extends StatelessWidget {
             Icons.schedule_rounded,
             '${session.startTime}–${session.endTime}  •  radius ${session.radiusMeter} m',
           ),
-          info(Icons.groups_rounded, '${session.presentCount} peserta hadir'),
-          const SizedBox(height: 14),
+          info(Icons.groups_rounded, session.summaryLabel),
+          const SizedBox(height: 10),
+          SizedBox(
+            width: double.infinity,
+            child: OutlinedButton.icon(
+              onPressed: onShowParticipants,
+              icon: const Icon(Icons.fact_check_outlined, size: 18),
+              label: const Text(
+                'Rekap Peserta',
+                style: TextStyle(fontWeight: FontWeight.w700),
+              ),
+              style: OutlinedButton.styleFrom(
+                foregroundColor: AppColors.primary,
+                side: const BorderSide(color: AppColors.cardBorder),
+                padding: const EdgeInsets.symmetric(vertical: 10),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+              ),
+            ),
+          ),
+          const SizedBox(height: 8),
           Row(
             children: [
               Expanded(
