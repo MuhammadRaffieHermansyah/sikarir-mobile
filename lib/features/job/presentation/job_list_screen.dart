@@ -373,10 +373,6 @@ class _JobListScreenState extends State<JobListScreen> {
                     ),
                     const SizedBox(height: 12),
 
-                    // Banner offline (API tidak tersedia, tampil data demo)
-                    if (!provider.isLoading && provider.isOffline)
-                      _buildOfflineBanner(),
-
                     // Loading / Error / Empty / Job cards
                     if (provider.isLoading)
                       const Center(
@@ -403,49 +399,6 @@ class _JobListScreenState extends State<JobListScreen> {
             ),
           ],
         ),
-      ),
-    );
-  }
-
-  Widget _buildOfflineBanner() {
-    return Container(
-      margin: const EdgeInsets.only(bottom: 12),
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-      decoration: BoxDecoration(
-        color: const Color(0xFFFFF3CD),
-        borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: const Color(0xFFFFD54F)),
-      ),
-      child: Row(
-        children: [
-          const Icon(Icons.wifi_off_rounded, size: 16, color: Color(0xFFF57F17)),
-          const SizedBox(width: 8),
-          const Expanded(
-            child: Text(
-              'Tidak terhubung ke server. Menampilkan data contoh.',
-              style: TextStyle(
-                fontSize: 11,
-                color: Color(0xFF5D4037),
-                fontWeight: FontWeight.w500,
-              ),
-            ),
-          ),
-          GestureDetector(
-            onTap: () {
-              final token = context.read<AuthProvider>().user?.token;
-              context.read<JobProvider>().fetchJobs(token);
-            },
-            child: const Text(
-              'Coba lagi',
-              style: TextStyle(
-                fontSize: 11,
-                color: Color(0xFFF57F17),
-                fontWeight: FontWeight.w700,
-                decoration: TextDecoration.underline,
-              ),
-            ),
-          ),
-        ],
       ),
     );
   }

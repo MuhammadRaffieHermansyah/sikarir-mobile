@@ -29,7 +29,7 @@ class TrainingClassService {
             Uri.parse(ApiConstants.pelatihan),
             headers: _headers(token),
           )
-          .timeout(const Duration(seconds: 8));
+          .timeout(const Duration(seconds: 20));
 
       if (kDebugMode) {
         debugPrint("Get Catalog Status: ${response.statusCode}");
@@ -56,7 +56,7 @@ class TrainingClassService {
                 Uri.parse(ApiConstants.jadwalPelatihan),
                 headers: _headers(token),
               )
-              .timeout(const Duration(seconds: 4));
+              .timeout(const Duration(seconds: 20));
           if (jadwalRes.statusCode == 200) {
             final decodedJadwal = json.decode(jadwalRes.body);
             final List jList = decodedJadwal is List
@@ -119,7 +119,7 @@ class TrainingClassService {
             headers: _headers(token),
             body: json.encode(body),
           )
-          .timeout(const Duration(seconds: 10));
+          .timeout(const Duration(seconds: 20));
 
       if (kDebugMode) {
         debugPrint("Enroll Training Status: ${response.statusCode}");
@@ -155,7 +155,7 @@ class TrainingClassService {
             Uri.parse(endpoint),
             headers: _headers(token),
           )
-          .timeout(const Duration(seconds: 8));
+          .timeout(const Duration(seconds: 20));
 
       if (kDebugMode) {
         debugPrint("Get MyClasses Status: ${response.statusCode}");
@@ -198,7 +198,7 @@ class TrainingClassService {
             Uri.parse('${ApiConstants.kelasPelatihan}/$id'),
             headers: _headers(token),
           )
-          .timeout(const Duration(seconds: 6));
+          .timeout(const Duration(seconds: 20));
 
       if (response.statusCode == 200) {
         final decoded = json.decode(response.body);
