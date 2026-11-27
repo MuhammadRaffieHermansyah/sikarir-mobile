@@ -76,10 +76,14 @@ class _TeachingClassesTabState extends State<_TeachingClassesTab> {
         error: true,
       );
     } else if (provider.classes.isEmpty) {
-      body = const InstructorMessage(
+      // Kelas instruktur diambil dari pendaftaran peserta, jadi jadwal yang
+      // belum punya peserta belum tampil di sini (P6).
+      body = InstructorMessage(
         icon: Icons.school_outlined,
         title: 'Belum Ada Kelas',
-        message: 'Anda belum ditugaskan mengampu kelas pelatihan mana pun.',
+        message: 'Kelas akan muncul setelah ada peserta yang terdaftar pada jadwal yang Anda ampu. '
+            'Jika belum ditugaskan, hubungi admin BLK.',
+        onRetry: _load,
       );
     } else {
       body = ListView.builder(
