@@ -106,7 +106,7 @@ class AttendanceService {
         .replace(queryParameters: {'page': page.toString()});
     final response = await _send(
       () => client.get(uri, headers: _headers(token)),
-      const Duration(seconds: 8),
+      const Duration(seconds: 20),
     );
 
     if (kDebugMode) {
@@ -155,7 +155,7 @@ class AttendanceService {
     final response = await _send(
       () => client.get(Uri.parse('${ApiConstants.absen}/today'),
           headers: _headers(token)),
-      const Duration(seconds: 8),
+      const Duration(seconds: 20),
     );
 
     if (kDebugMode) {
@@ -186,7 +186,7 @@ class AttendanceService {
         Uri.parse(ApiConstants.sesiPresensiAktif(classId)),
         headers: _headers(token),
       ),
-      const Duration(seconds: 8),
+      const Duration(seconds: 20),
     );
 
     if (response.statusCode == 404) return null;
@@ -210,7 +210,7 @@ class AttendanceService {
     final response = await _send(
       () => client.get(Uri.parse('${ApiConstants.absen}/rekap'),
           headers: _headers(token)),
-      const Duration(seconds: 8),
+      const Duration(seconds: 20),
     );
 
     if (response.statusCode == 404) return null;
@@ -247,7 +247,7 @@ class AttendanceService {
           headers: _headers(token),
           body: body,
         ),
-        const Duration(seconds: 10),
+        const Duration(seconds: 20),
       );
     }
 

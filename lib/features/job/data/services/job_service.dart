@@ -40,7 +40,7 @@ class JobService {
             Uri.parse(ApiConstants.lowongan),
             headers: _headers(token),
           )
-          .timeout(const Duration(seconds: 10));
+          .timeout(const Duration(seconds: 20));
 
       if (response.statusCode == 200) {
         final decoded = json.decode(response.body);
@@ -91,7 +91,7 @@ class JobService {
             Uri.parse('${ApiConstants.lowongan}/$jobId/lamar'),
             headers: _headers(token),
           )
-          .timeout(const Duration(seconds: 8));
+          .timeout(const Duration(seconds: 20));
 
       final decoded = json.decode(response.body) as Map<String, dynamic>? ?? {};
       final message = (decoded['message'] ?? '').toString();
@@ -122,7 +122,7 @@ class JobService {
             Uri.parse('${ApiConstants.lowongan}/my-applications'),
             headers: _headers(token),
           )
-          .timeout(const Duration(seconds: 6));
+          .timeout(const Duration(seconds: 20));
 
       if (response.statusCode == 200) {
         final decoded = json.decode(response.body);

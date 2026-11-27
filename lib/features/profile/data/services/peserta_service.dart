@@ -40,7 +40,7 @@ class PesertaService {
             Uri.parse(ApiConstants.pesertaMe),
             headers: _headers(token),
           )
-          .timeout(const Duration(seconds: 8));
+          .timeout(const Duration(seconds: 20));
 
       if (kDebugMode) {
         debugPrint("Get Peserta Profile Status: ${response.statusCode}");
@@ -116,7 +116,7 @@ class PesertaService {
           headers: _headers(token),
           body: json.encode(body),
         )
-        .timeout(const Duration(seconds: 10));
+        .timeout(const Duration(seconds: 20));
 
     if (kDebugMode) {
       debugPrint("Update Peserta Profile Status: ${response.statusCode}");
@@ -149,7 +149,7 @@ class PesertaService {
             if (pesertaId != null && pesertaId.isNotEmpty) 'id_peserta': pesertaId,
           }),
         )
-        .timeout(const Duration(seconds: 10));
+        .timeout(const Duration(seconds: 20));
 
     if (kDebugMode) {
       debugPrint("Enroll Training Status: ${response.statusCode}");

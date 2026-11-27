@@ -73,6 +73,33 @@ class _TrainingScheduleScreenState extends State<TrainingScheduleScreen> {
             Expanded(
               child: provider.isLoading
                   ? const Center(child: CircularProgressIndicator(color: AppColors.primary))
+                  : provider.errorMessage != null && provider.schedules.isEmpty
+                      ? Center(
+                          child: Padding(
+                            padding: const EdgeInsets.all(24),
+                            child: Column(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                const Icon(Icons.cloud_off_rounded, size: 44, color: AppColors.textSecondary),
+                                const SizedBox(height: 12),
+                                Text(
+                                  provider.errorMessage!.replaceFirst('Exception: ', ''),
+                                  textAlign: TextAlign.center,
+                                  style: const TextStyle(color: AppColors.textSecondary, fontSize: 13),
+                                ),
+                                const SizedBox(height: 12),
+                                ElevatedButton(
+                                  onPressed: () => provider.fetchSchedules(context.read<AuthProvider>().user?.token),
+                                  style: ElevatedButton.styleFrom(
+                                    backgroundColor: AppColors.primary,
+                                    foregroundColor: Colors.white,
+                                  ),
+                                  child: const Text('Coba lagi'),
+                                ),
+                              ],
+                            ),
+                          ),
+                        )
                   : provider.schedules.isEmpty
                       ? const Center(
                           child: Text(

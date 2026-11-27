@@ -73,7 +73,7 @@ class AccountService {
               'password_baru_confirmation': confirmation,
             }),
           )
-          .timeout(const Duration(seconds: 10));
+          .timeout(const Duration(seconds: 20));
       if (res.statusCode != 200 && res.statusCode != 204) {
         throw _error(res, 'Gagal mengganti password');
       }
@@ -85,7 +85,7 @@ class AccountService {
     return _guard(() async {
       final res = await client
           .get(Uri.parse(ApiConstants.instrukturMe), headers: _headers(token))
-          .timeout(const Duration(seconds: 10));
+          .timeout(const Duration(seconds: 20));
       if (res.statusCode == 404) return null;
       if (res.statusCode != 200) throw _error(res, 'Gagal memuat profil');
       final decoded = _decode(res.body);

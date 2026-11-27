@@ -80,7 +80,7 @@ class InstructorService {
             Uri.parse(ApiConstants.instrukturKelas),
             headers: _headers(token),
           )
-          .timeout(const Duration(seconds: 10));
+          .timeout(const Duration(seconds: 20));
       if (res.statusCode == 404) return <TrainingClassModel>[];
       if (res.statusCode != 200) {
         throw _error(res, 'Gagal memuat kelas yang Anda ampu');
@@ -100,7 +100,7 @@ class InstructorService {
             Uri.parse(ApiConstants.modulKelas(classId)),
             headers: _headers(token),
           )
-          .timeout(const Duration(seconds: 10));
+          .timeout(const Duration(seconds: 20));
       if (res.statusCode == 404) return <ClassModule>[];
       if (res.statusCode != 200) throw _error(res, 'Gagal memuat modul kelas');
       return _asList(_decode(res.body), const ['data', 'modul'])
@@ -128,7 +128,7 @@ class InstructorService {
               'pertemuan_ke': meetingNumber,
             }),
           )
-          .timeout(const Duration(seconds: 10));
+          .timeout(const Duration(seconds: 20));
       if (res.statusCode != 200 && res.statusCode != 201) {
         throw _error(res, 'Gagal menambahkan modul');
       }
@@ -150,7 +150,7 @@ class InstructorService {
             Uri.parse(ApiConstants.modul(moduleId)),
             headers: _headers(token),
           )
-          .timeout(const Duration(seconds: 10));
+          .timeout(const Duration(seconds: 20));
       if (res.statusCode != 200 && res.statusCode != 204) {
         throw _error(res, 'Gagal menghapus modul');
       }
@@ -212,7 +212,7 @@ class InstructorService {
             Uri.parse(ApiConstants.sesiPresensiKelas(classId)),
             headers: _headers(token),
           )
-          .timeout(const Duration(seconds: 10));
+          .timeout(const Duration(seconds: 20));
       if (res.statusCode == 404) return <AttendanceSession>[];
       if (res.statusCode != 200) {
         throw _error(res, 'Gagal memuat sesi presensi');
@@ -236,7 +236,7 @@ class InstructorService {
             headers: _headers(token),
             body: json.encode(input.toMap()),
           )
-          .timeout(const Duration(seconds: 10));
+          .timeout(const Duration(seconds: 20));
       if (res.statusCode != 200 && res.statusCode != 201) {
         throw _error(res, 'Gagal membuat sesi presensi');
       }
@@ -255,7 +255,7 @@ class InstructorService {
             headers: _headers(token),
             body: json.encode({'absen_dibuka': open}),
           )
-          .timeout(const Duration(seconds: 10));
+          .timeout(const Duration(seconds: 20));
       if (res.statusCode != 200) {
         throw _error(res, 'Gagal mengubah status presensi');
       }
@@ -269,7 +269,7 @@ class InstructorService {
             Uri.parse(ApiConstants.sesiPresensi(sessionId)),
             headers: _headers(token),
           )
-          .timeout(const Duration(seconds: 10));
+          .timeout(const Duration(seconds: 20));
       if (res.statusCode != 200 && res.statusCode != 204) {
         throw _error(res, 'Gagal menghapus sesi presensi');
       }
@@ -283,7 +283,7 @@ class InstructorService {
             Uri.parse(ApiConstants.materi(materialId)),
             headers: _headers(token),
           )
-          .timeout(const Duration(seconds: 10));
+          .timeout(const Duration(seconds: 20));
       if (res.statusCode != 200 && res.statusCode != 204) {
         throw _error(res, 'Gagal menghapus materi');
       }

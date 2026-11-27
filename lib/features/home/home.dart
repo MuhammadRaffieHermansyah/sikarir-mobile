@@ -35,6 +35,41 @@ class _HomePageState extends State<HomePage> {
     });
   }
 
+  String? get _token => context.read<AuthProvider>().user?.token;
+
+  /// Kartu "gagal memuat" untuk satu bagian beranda, agar kegagalan server tidak
+  /// tampil sebagai "belum ada data".
+  Widget _buildLoadError(String bagian, VoidCallback onRetry) {
+    return Container(
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: AppColors.cardBorder),
+      ),
+      child: Row(
+        children: [
+          Icon(Icons.cloud_off_rounded, color: Colors.red.shade400, size: 22),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Text(
+              'Gagal memuat $bagian. Periksa koneksi ke server.',
+              style: const TextStyle(fontSize: 11.5, color: AppColors.textSecondary),
+            ),
+          ),
+          TextButton(
+            onPressed: onRetry,
+            style: TextButton.styleFrom(foregroundColor: AppColors.primary),
+            child: const Text(
+              'Coba lagi',
+              style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   /// Memuat seluruh data beranda dari API secara paralel
   Future<void> _refreshAllData() async {
     final token = context.read<AuthProvider>().user?.token;
@@ -429,6 +464,11 @@ class _HomePageState extends State<HomePage> {
             ),
             child: const CircularProgressIndicator(color: AppColors.primary),
           )
+        else if (trainingProvider.errorMessage != null && classes.isEmpty)
+          _buildLoadError(
+            'pelatihan Anda',
+            () => context.read<TrainingClassProvider>().fetchClasses(_token),
+          )
         else if (classes.isNotEmpty)
           _buildActiveClassCard(classes.first)
         else
@@ -758,7 +798,12 @@ class _HomePageState extends State<HomePage> {
           ],
         ),
         const SizedBox(height: 12),
-        if (schedules.isNotEmpty)
+        if (scheduleProvider.errorMessage != null && schedules.isEmpty)
+          _buildLoadError(
+            'jadwal pelatihan',
+            () => context.read<TrainingScheduleProvider>().fetchSchedules(_token),
+          )
+        else if (schedules.isNotEmpty)
           _buildScheduleItemCard(schedules.first)
         else
           Container(
@@ -979,6 +1024,11 @@ class _HomePageState extends State<HomePage> {
               border: Border.all(color: AppColors.cardBorder),
             ),
             child: const CircularProgressIndicator(color: AppColors.primary),
+          )
+        else if (trainingProvider.catalogError != null && catalogList.isEmpty)
+          _buildLoadError(
+            'rekomendasi pelatihan',
+            () => context.read<TrainingClassProvider>().fetchCatalog(_token),
           )
         else if (catalogList.isEmpty)
           Container(
@@ -1219,6 +1269,11 @@ class _HomePageState extends State<HomePage> {
               border: Border.all(color: AppColors.cardBorder),
             ),
             child: const CircularProgressIndicator(color: AppColors.primary),
+          )
+        else if (jobProvider.errorMessage != null && jobs.isEmpty)
+          _buildLoadError(
+            'peluang kerja',
+            () => context.read<JobProvider>().fetchJobs(_token),
           )
         else if (jobs.isEmpty)
           Container(
