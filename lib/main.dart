@@ -12,6 +12,7 @@ import 'package:sikarir/features/partner/partner.dart';
 import 'package:sikarir/features/profile/presentation/profile_screen.dart';
 import 'package:sikarir/features/training/training.dart';
 import 'package:sikarir/features/profile/presentation/providers/peserta_provider.dart';
+import 'package:sikarir/features/notification/notification.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -100,73 +101,7 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
-      builder: (context) {
-        return Container(
-          padding: const EdgeInsets.all(20),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const Text(
-                'Notifikasi Peserta',
-                style: TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.bold,
-                  color: AppColors.textPrimary,
-                ),
-              ),
-              const SizedBox(height: 12),
-              ListTile(
-                contentPadding: EdgeInsets.zero,
-                leading: Container(
-                  padding: const EdgeInsets.all(8),
-                  decoration: const BoxDecoration(
-                    color: AppColors.mint,
-                    shape: BoxShape.circle,
-                  ),
-                  child: const Icon(
-                    Icons.event_available,
-                    color: AppColors.mintDark,
-                    size: 20,
-                  ),
-                ),
-                title: const Text(
-                  'Kelas Tatap Muka Besok',
-                  style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold),
-                ),
-                subtitle: const Text(
-                  'Pukul 08:00 WIB di Lab Komputer 02 • BLK Jember',
-                  style: TextStyle(fontSize: 11),
-                ),
-              ),
-              const Divider(),
-              ListTile(
-                contentPadding: EdgeInsets.zero,
-                leading: Container(
-                  padding: const EdgeInsets.all(8),
-                  decoration: const BoxDecoration(
-                    color: AppColors.peachBg,
-                    shape: BoxShape.circle,
-                  ),
-                  child: const Icon(
-                    Icons.work,
-                    color: AppColors.peachText,
-                    size: 20,
-                  ),
-                ),
-                title: const Text(
-                  'Loker Baru Mitra BLK',
-                  style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold),
-                ),
-                subtitle: const Text(
-                  'Junior Web & UI Developer di PT Midtrans Indonesia',
-                  style: TextStyle(fontSize: 11),
-                ),
-              ),
-            ],
-          ),
-        );
-      },
+      builder: (context) => const NotificationSheet(),
     );
   }
 
